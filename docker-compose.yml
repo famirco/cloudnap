@@ -1,0 +1,22 @@
+services:
+  cloudnap:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: cloudnap
+    ports:
+      - "8000:8000"
+    environment:
+      # AWS credential chain is read automatically from the host environment
+      # or from IAM Instance Profiles if running inside AWS EC2.
+      - MOCK_AWS=true
+      - AWS_DEFAULT_REGION=us-east-1
+      - ALLOWED_REGIONS=us-east-1,us-west-2
+      - APP_PASSWORD=secret123
+      - DATABASE_URL=sqlite:////app/data/cloudnap.db
+    volumes:
+      - cloudnap-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  cloudnap-data:
