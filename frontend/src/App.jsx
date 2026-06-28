@@ -277,7 +277,7 @@ export default function App() {
       return (
         <div className="grid grid-cols-7 gap-1 text-[11px]">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(w => (
-            <div key={w} className="text-zinc-500 font-semibold py-1">{w}</div>
+            <div key={w} className="text-brand-slate font-semibold py-1">{w}</div>
           ))}
           {slots.map((d, index) => {
             if (d === null) return <div key={`blank-${index}`} className="py-1.5" />;
@@ -289,16 +289,16 @@ export default function App() {
             const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
             const isToday = cellTime === todayMs;
 
-            let cellStyle = "text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-lg cursor-pointer";
+            let cellStyle = "text-slate-700 hover:bg-slate-100 hover:text-white rounded-lg cursor-pointer";
             if (isToday) {
-              cellStyle = "text-amber-400 font-bold border border-amber-500/40 rounded-lg hover:bg-zinc-800 cursor-pointer";
+              cellStyle = "text-brand-teal font-bold border border-brand-teal/40 rounded-lg hover:bg-slate-100 cursor-pointer";
             }
             if (startMs && cellTime === startMs) {
-              cellStyle = "bg-blue-600 text-white font-bold rounded-lg border border-blue-500 shadow-md cursor-pointer";
+              cellStyle = "bg-brand-teal text-white font-bold rounded-lg border border-brand-teal shadow-md cursor-pointer";
             } else if (endMs && cellTime === endMs) {
-              cellStyle = "bg-blue-600 text-white font-bold rounded-lg border border-blue-500 shadow-md cursor-pointer";
+              cellStyle = "bg-brand-teal text-white font-bold rounded-lg border border-brand-teal shadow-md cursor-pointer";
             } else if (startMs && endMs && cellTime > startMs && cellTime < endMs) {
-              cellStyle = "bg-blue-500/20 text-white font-semibold rounded-none cursor-pointer";
+              cellStyle = "bg-brand-teal/10 text-brand-teal font-semibold rounded-none cursor-pointer";
             }
 
             return (
@@ -325,18 +325,18 @@ export default function App() {
     };
 
     return (
-      <div className="bg-zinc-950/60 border border-zinc-855/50 p-4 rounded-xl space-y-4">
+      <div className="bg-white border border-brand-soft/30 shadow-sm p-4 rounded-xl space-y-4">
         {/* Calendar Header with Navigation Chevrons */}
         <div className="flex justify-between items-center px-1">
           <button
             type="button"
             onClick={prevMonth}
-            className="p-1.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white rounded-lg transition"
+            className="p-1.5 bg-slate-100 border border-brand-soft/30 hover:border-brand-soft/40 text-slate-500 hover:text-white rounded-lg transition"
           >
             &lt;
           </button>
           
-          <div className="flex justify-around flex-1 text-xs font-semibold text-zinc-300">
+          <div className="flex justify-around flex-1 text-xs font-semibold text-slate-700">
             <span>{months[leftMonth]} {leftYear}</span>
             <span>{months[rightMonth]} {rightYear}</span>
           </div>
@@ -344,7 +344,7 @@ export default function App() {
           <button
             type="button"
             onClick={nextMonth}
-            className="p-1.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white rounded-lg transition"
+            className="p-1.5 bg-slate-100 border border-brand-soft/30 hover:border-brand-soft/40 text-slate-500 hover:text-white rounded-lg transition"
           >
             &gt;
           </button>
@@ -436,16 +436,16 @@ export default function App() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-teal via-brand-slate to-brand-soft"></div>
           <div className="flex flex-col items-center mb-8">
             <span className="text-5xl mb-3">😴</span>
-            <h1 className="text-3xl font-bold tracking-tight text-white">CloudNap</h1>
-            <p className="text-zinc-400 text-sm mt-1">AWS Instance Scheduler</p>
+            <h1 className="text-3xl font-bold tracking-tight text-brand-teal">CloudNap</h1>
+            <p className="text-slate-500 text-sm mt-1">AWS Instance Scheduler</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
               <div className="relative">
                 <input
                   type="password"
@@ -455,14 +455,14 @@ export default function App() {
                   placeholder="Enter access password"
                   required
                 />
-                <Lock className="absolute right-3 top-3.5 h-5 w-5 text-zinc-500" />
+                <Lock className="absolute right-3 top-3.5 h-5 w-5 text-brand-slate" />
               </div>
               {authError && <p className="text-red-400 text-xs mt-2 flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> {authError}</p>}
             </div>
             
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-500/20"
+              className="w-full bg-brand-teal hover:bg-brand-teal/90 text-white font-medium py-3 rounded-xl transition duration-200 shadow-lg shadow-blue-500/20"
             >
               Sign In
             </button>
@@ -490,7 +490,7 @@ export default function App() {
               setSelectedInstanceId(null);
               setAddingWindowForInstanceId(null);
             }}
-            className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm font-semibold transition"
+            className="flex items-center gap-2 text-slate-500 hover:text-white text-sm font-semibold transition"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Resources
@@ -500,7 +500,7 @@ export default function App() {
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl border border-zinc-700 transition"
+              className="flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 border border-brand-soft/40 px-4 py-2.5 rounded-xl border border-brand-soft/40 transition"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Refresh
@@ -513,13 +513,13 @@ export default function App() {
           <div className="flex justify-between items-start">
             <div>
               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 w-max mb-3 ${
-                inst.type === "ec2" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
+                inst.type === "ec2" ? "bg-blue-500/10 text-brand-teal" : "bg-purple-500/10 text-purple-400"
               }`}>
                 {inst.type === "ec2" ? <Server className="h-3 w-3" /> : <Database className="h-3 w-3" />}
                 {inst.type.toUpperCase()}
               </span>
-              <h2 className="text-2xl font-bold text-white">{inst.name}</h2>
-              <p className="text-zinc-500 text-xs font-mono mt-1">{inst.id} • {inst.region}</p>
+              <h2 className="text-2xl font-bold text-slate-850">{inst.name}</h2>
+              <p className="text-brand-slate text-xs font-mono mt-1">{inst.id} • {inst.region}</p>
             </div>
             
             <div className="flex flex-col items-end">
@@ -530,26 +530,26 @@ export default function App() {
                 }`}></span>
                 <span className={`text-sm font-bold capitalize ${
                   inst.status === "running" ? "text-emerald-400" :
-                  inst.status === "stopped" ? "text-zinc-400" : "text-yellow-400"
+                  inst.status === "stopped" ? "text-slate-500" : "text-yellow-400"
                 }`}>{inst.status}</span>
               </div>
             </div>
           </div>
 
           {/* Quick manual overrides inside the detail view */}
-          <div className="pt-4 border-t border-zinc-800/80">
-            <span className="block text-zinc-500 text-[10px] font-semibold uppercase tracking-wider mb-3">Manual Override controls</span>
+          <div className="pt-4 border-t border-brand-soft/20">
+            <span className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider mb-3">Manual Override controls</span>
             {inst.override ? (
-              <div className="bg-yellow-500/5 border border-yellow-500/10 p-4 rounded-xl flex items-center justify-between gap-4">
+              <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl flex items-center justify-between gap-4">
                 <div className="text-xs">
-                  <span className="text-yellow-400 font-semibold block mb-0.5">
+                  <span className="text-amber-700 font-semibold block mb-0.5">
                     {inst.override.override_type === "START" ? "Manually Started" : "Manually Stopped"}
                   </span>
-                  <span className="text-zinc-500 text-[10px]">Auto-schedule is paused while manual override is active</span>
+                  <span className="text-brand-slate text-[10px]">Auto-schedule is paused while manual override is active</span>
                 </div>
                 <button
                   onClick={() => handleCancelOverride(inst.id)}
-                  className="text-xs bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg transition"
+                  className="text-xs bg-brand-teal hover:bg-brand-teal/90 text-white font-semibold px-4 py-2 rounded-lg transition"
                 >
                   Resume Schedule
                 </button>
@@ -579,10 +579,10 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left panel: List existing schedules, sorted by date */}
           <div className="glass-panel p-6 rounded-2xl space-y-4">
-            <h3 className="text-lg font-bold text-white">Sleep Schedules</h3>
+            <h3 className="text-lg font-bold text-brand-teal">Sleep Schedules</h3>
             
             {sortedSchedules.length === 0 ? (
-              <p className="text-zinc-500 text-sm italic py-4">Running 24/7 (No sleep schedules registered)</p>
+              <p className="text-brand-slate text-sm italic py-4">Running 24/7 (No sleep schedules registered)</p>
             ) : (
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
                 {sortedSchedules.map(win => {
@@ -595,13 +595,13 @@ export default function App() {
                   const nowDt = new Date();
                   
                   let statusText = "Scheduled";
-                  let statusColor = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+                  let statusColor = "bg-blue-50 text-blue-800 border border-blue-200";
                   if (nowDt >= endDt) {
                     statusText = "Expired";
-                    statusColor = "bg-zinc-800 text-zinc-500 border-zinc-700/50";
+                    statusColor = "bg-slate-100 text-slate-700 border border-slate-300";
                   } else if (nowDt >= startDt && nowDt < endDt) {
                     statusText = "Sleeping";
-                    statusColor = "bg-yellow-500/10 text-yellow-400 border-yellow-500/20 animate-pulse";
+                    statusColor = "bg-amber-100 text-amber-800 border border-amber-300 animate-pulse";
                   }
 
                   const formatUTC = (d) => {
@@ -613,13 +613,13 @@ export default function App() {
                   };
 
                   return (
-                    <div key={win.id} className="flex justify-between items-center text-xs bg-zinc-900/50 border border-zinc-800/80 p-3.5 rounded-xl">
+                    <div key={win.id} className="flex justify-between items-center text-xs bg-slate-50 border border-brand-soft/20 p-3.5 rounded-xl">
                       <div className="truncate pr-2">
-                        <span className="font-semibold text-zinc-300 block truncate text-sm">Sleep Duration</span>
-                        <span className="text-zinc-500 font-mono text-[11px] block mt-1">
+                        <span className="font-semibold text-slate-700 block truncate text-sm">Sleep Duration</span>
+                        <span className="text-brand-slate font-mono text-[11px] block mt-1">
                           OFF: {formatUTC(startDt)}
                         </span>
-                        <span className="text-zinc-500 font-mono text-[11px] block">
+                        <span className="text-brand-slate font-mono text-[11px] block">
                           ON:  {formatUTC(endDt)}
                         </span>
                         <span className={`inline-block text-[9px] font-semibold px-2 py-0.5 rounded border mt-2 ${statusColor}`}>
@@ -644,19 +644,19 @@ export default function App() {
           {/* Right panel: Add Sleep Window */}
           <div className="glass-panel p-6 rounded-2xl space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-white">Define Sleep Window</h3>
-              <span className="text-[10px] text-yellow-500 font-semibold px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/20 rounded-md">Offline/Sleep Plan</span>
+              <h3 className="text-lg font-bold text-brand-teal">Define Sleep Window</h3>
+              <span className="text-[10px] text-amber-800 font-semibold px-2 py-0.5 bg-amber-100 border border-amber-300 rounded-md">Offline/Sleep Plan</span>
             </div>
             
-            <p className="text-[11px] text-zinc-400 leading-relaxed bg-zinc-900/40 p-3 rounded-xl border border-zinc-800">
-              ℹ️ <strong>Sleep Duration:</strong> The resource will be stopped during the selected range, and will run normally outside of it.
+            <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-xl border border-brand-soft/30">
+              ℹ️ <strong class="text-brand-teal">Sleep Duration:</strong> The resource will be stopped during the selected range, and will run normally outside of it.
             </p>
 
             {renderCalendar()}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div className="space-y-1.5">
-                <label className="block text-zinc-500 text-[10px] font-semibold uppercase tracking-wider">Turn OFF date</label>
+                <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Turn OFF date</label>
                 <input
                   type="text"
                   placeholder="YYYY/MM/DD"
@@ -669,17 +669,17 @@ export default function App() {
                       setCalendarStartVal(new Date(parsed.y, parsed.m, parsed.d));
                     }
                   }}
-                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-zinc-900 border border-zinc-850/60 font-mono"
+                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-white border border-brand-soft/40 font-mono text-slate-800"
                 />
                 <input
                   type="text"
                   placeholder="HH:MM"
                   value={newSleepStartTimeStr}
                   onChange={(e) => setNewSleepStartTimeStr(e.target.value)}
-                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-zinc-900 border border-zinc-850/60 font-mono"
+                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-white border border-brand-soft/40 font-mono text-slate-800"
                 />
                 {newSleepStartStr && (
-                  <span className="block text-[9px] text-zinc-500 font-mono">
+                  <span className="block text-[9px] text-brand-slate font-mono">
                     UTC: {(() => {
                       const parsed = parseDateString(newSleepStartStr);
                       if (!parsed) return "Invalid Date";
@@ -692,7 +692,7 @@ export default function App() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-zinc-500 text-[10px] font-semibold uppercase tracking-wider">Turn ON date</label>
+                <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Turn ON date</label>
                 <input
                   type="text"
                   placeholder="YYYY/MM/DD"
@@ -705,17 +705,17 @@ export default function App() {
                       setCalendarEndVal(new Date(parsed.y, parsed.m, parsed.d));
                     }
                   }}
-                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-zinc-900 border border-zinc-850/60 font-mono"
+                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-white border border-brand-soft/40 font-mono text-slate-800"
                 />
                 <input
                   type="text"
                   placeholder="HH:MM"
                   value={newSleepEndTimeStr}
                   onChange={(e) => setNewSleepEndTimeStr(e.target.value)}
-                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-zinc-900 border border-zinc-850/60 font-mono"
+                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-white bg-white border border-brand-soft/40 font-mono text-slate-800"
                 />
                 {newSleepEndStr && (
-                  <span className="block text-[9px] text-zinc-500 font-mono">
+                  <span className="block text-[9px] text-brand-slate font-mono">
                     UTC: {(() => {
                       const parsed = parseDateString(newSleepEndStr);
                       if (!parsed) return "Invalid Date";
@@ -727,12 +727,12 @@ export default function App() {
                 )}
               </div>
             </div>
-            <p className="text-[10px] text-zinc-500">For date, use YYYY/MM/DD.</p>
+            <p className="text-[10px] text-brand-slate">For date, use YYYY/MM/DD.</p>
 
             <button
               type="button"
               onClick={() => handleAddWindow(inst.id, inst.name)}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-xs font-semibold transition"
+              className="w-full bg-brand-teal hover:bg-brand-teal/90 text-white py-2.5 rounded-xl text-xs font-semibold transition"
             >
               Save Sleep Window
             </button>
@@ -745,12 +745,12 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Sidebar */}
-      <aside className="w-full md:w-64 glass-panel md:min-h-screen flex flex-col border-r border-zinc-800">
-        <div className="p-6 flex items-center gap-3 border-b border-zinc-800">
+      <aside className="w-full md:w-64 glass-panel md:min-h-screen flex flex-col border-r border-brand-soft/30">
+        <div className="p-6 flex items-center gap-3 border-b border-brand-soft/30">
           <span className="text-3xl">😴</span>
           <div>
             <h1 className="font-bold text-lg leading-tight text-white">CloudNap</h1>
-            <p className="text-zinc-500 text-xs font-mono">SELF-HOSTED</p>
+            <p className="text-brand-slate text-xs font-mono">SELF-HOSTED</p>
           </div>
         </div>
         
@@ -760,7 +760,7 @@ export default function App() {
               setActiveTab("dashboard");
               setSelectedInstanceId(null);
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition duration-150 ${activeTab === "dashboard" ? "bg-blue-600/20 text-blue-400 border border-blue-500/20 font-medium" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition duration-150 ${activeTab === "dashboard" ? "bg-blue-600/20 text-brand-teal border border-brand-teal/20 font-medium" : "text-slate-500 hover:text-zinc-200 hover:bg-slate-100"}`}
           >
             <Activity className="h-5 w-5" />
             Dashboard
@@ -770,7 +770,7 @@ export default function App() {
               setActiveTab("instances");
               setSelectedInstanceId(null);
             }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition duration-150 ${activeTab === "instances" ? "bg-blue-600/20 text-blue-400 border border-blue-500/20 font-medium" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition duration-150 ${activeTab === "instances" ? "bg-blue-600/20 text-brand-teal border border-brand-teal/20 font-medium" : "text-slate-500 hover:text-zinc-200 hover:bg-slate-100"}`}
           >
             <Server className="h-5 w-5" />
             Instances
@@ -778,10 +778,10 @@ export default function App() {
         </nav>
 
         {authRequired && (
-          <div className="p-4 border-t border-zinc-800">
+          <div className="p-4 border-t border-brand-soft/30">
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-red-500/10 hover:text-red-400 transition duration-150"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:text-zinc-200 hover:bg-red-500/10 hover:text-red-400 transition duration-150"
             >
               <LogOut className="h-5 w-5" />
               Sign Out
@@ -795,12 +795,12 @@ export default function App() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-white capitalize">{activeTab}</h2>
-            <p className="text-zinc-400 text-sm mt-1">Manage AWS compute and database schedules to sleep cost overheads.</p>
+            <h2 className="text-3xl font-bold text-brand-teal capitalize">{activeTab}</h2>
+            <p className="text-slate-500 text-sm mt-1">Manage AWS compute and database schedules to sleep cost overheads.</p>
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="glass-panel px-4 py-2.5 rounded-xl border border-zinc-800 flex items-center gap-2 text-sm font-mono text-blue-400 shadow-lg shadow-blue-500/5 select-none shrink-0">
+            <div className="glass-panel px-4 py-2.5 rounded-xl border border-brand-soft/30 flex items-center gap-2 text-sm font-mono text-brand-teal shadow-lg shadow-brand-teal/5 select-none shrink-0">
               <Clock className="h-4 w-4 animate-pulse shrink-0" />
               <span>{utcTime}</span>
             </div>
@@ -808,7 +808,7 @@ export default function App() {
             <button
               onClick={fetchData}
               disabled={loading}
-              className="flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl border border-zinc-700 transition shrink-0"
+              className="flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 border border-brand-soft/40 px-4 py-2.5 rounded-xl border border-brand-soft/40 transition shrink-0"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Refresh Data
@@ -830,46 +830,46 @@ export default function App() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="glass-panel p-6 rounded-2xl">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
+                  <span className="p-3 bg-blue-500/10 rounded-xl text-brand-teal">
                     <Server className="h-6 w-6" />
                   </span>
-                  <span className="text-xs font-mono text-zinc-500">MANAGED</span>
+                  <span className="text-xs font-mono text-brand-slate">MANAGED</span>
                 </div>
-                <h3 className="text-2xl font-bold text-white">{metrics.totalInstances}</h3>
-                <p className="text-zinc-400 text-sm mt-1">Total AWS Resources</p>
+                <h3 className="text-2xl font-bold text-slate-800">{metrics.totalInstances}</h3>
+                <p className="text-slate-500 text-sm mt-1">Total AWS Resources</p>
               </div>
 
               <div className="glass-panel p-6 rounded-2xl">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="p-3 bg-purple-500/10 rounded-xl text-purple-400">
+                  <span className="p-3 bg-brand-teal/10 rounded-xl text-brand-teal">
                     <Clock className="h-6 w-6" />
                   </span>
                   <span className="text-xs font-mono text-purple-500">SCHEDULED</span>
                 </div>
-                <h3 className="text-2xl font-bold text-white">{metrics.scheduledInstances}</h3>
-                <p className="text-zinc-400 text-sm mt-1">Automation active</p>
+                <h3 className="text-2xl font-bold text-slate-800">{metrics.scheduledInstances}</h3>
+                <p className="text-slate-500 text-sm mt-1">Automation active</p>
               </div>
 
               <div className="glass-panel p-6 rounded-2xl">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="p-3 bg-amber-500/10 rounded-xl text-amber-400">
+                  <span className="p-3 bg-amber-500/10 rounded-xl text-amber-600">
                     <AlertTriangle className="h-6 w-6" />
                   </span>
                   <span className="text-xs font-mono text-amber-500">OVERRIDES</span>
                 </div>
-                <h3 className="text-2xl font-bold text-white">{metrics.activeOverrides}</h3>
-                <p className="text-zinc-400 text-sm mt-1">Manual holds active</p>
+                <h3 className="text-2xl font-bold text-slate-800">{metrics.activeOverrides}</h3>
+                <p className="text-slate-500 text-sm mt-1">Manual holds active</p>
               </div>
 
               <div className="glass-panel p-6 rounded-2xl">
                 <div className="flex justify-between items-start mb-4">
-                  <span className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
+                  <span className="p-3 bg-emerald-500/10 rounded-xl text-emerald-600">
                     <Moon className="h-6 w-6" />
                   </span>
                   <span className="text-xs font-mono text-emerald-500">SLEEPING</span>
                 </div>
-                <h3 className="text-2xl font-bold text-white">{metrics.sleepingInstances} / {metrics.totalInstances}</h3>
-                <p className="text-zinc-400 text-sm mt-1">Stopped (Inactive)</p>
+                <h3 className="text-2xl font-bold text-slate-800">{metrics.sleepingInstances} / {metrics.totalInstances}</h3>
+                <p className="text-slate-500 text-sm mt-1">Stopped (Inactive)</p>
               </div>
             </div>
 
@@ -877,11 +877,11 @@ export default function App() {
             <div className="glass-panel p-6 rounded-2xl space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-blue-400" />
+                  <h3 className="text-lg font-bold text-brand-teal flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-brand-teal" />
                     System Logs & Audit Trail
                   </h3>
-                  <p className="text-zinc-500 text-xs mt-1">Audit log of system actions and user schedule operations</p>
+                  <p className="text-brand-slate text-xs mt-1">Audit log of system actions and user schedule operations</p>
                 </div>
                 
                 {/* Search Logs */}
@@ -893,11 +893,11 @@ export default function App() {
                     onChange={(e) => setLogSearchQuery(e.target.value)}
                     className="glass-input w-full px-4 py-2 pl-10 rounded-xl text-white placeholder-zinc-500 text-xs"
                   />
-                  <Search className="absolute left-3 top-3 h-3.5 w-3.5 text-zinc-500" />
+                  <Search className="absolute left-3 top-3 h-3.5 w-3.5 text-brand-slate" />
                   {logSearchQuery && (
                     <button 
                       onClick={() => setLogSearchQuery("")}
-                      className="absolute right-3 top-3 text-zinc-500 hover:text-zinc-300 animate-fadeIn"
+                      className="absolute right-3 top-3 text-brand-slate hover:text-slate-700 animate-fadeIn"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -919,8 +919,8 @@ export default function App() {
 
                 if (filteredLogs.length === 0) {
                   return (
-                    <div className="text-center py-8 border border-dashed border-zinc-800/80 rounded-xl bg-zinc-900/10">
-                      <p className="text-zinc-500 text-xs italic">No logs found matching criteria.</p>
+                    <div className="text-center py-8 border border-dashed border-brand-soft/20 rounded-xl bg-slate-100">
+                      <p className="text-brand-slate text-xs italic">No logs found matching criteria.</p>
                     </div>
                   );
                 }
@@ -932,21 +932,21 @@ export default function App() {
                       const formattedTime = logDate.toISOString().replace("T", " ").substring(0, 19) + " UTC";
                       
                       // Different actions -> different styles
-                      let actionBadge = "bg-zinc-800 text-zinc-400 border-zinc-700/50";
+                      let actionBadge = "bg-slate-100 text-slate-800 border border-slate-300";
                       if (log.action.includes("SCHEDULE")) {
-                        actionBadge = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+                        actionBadge = "bg-blue-50 text-blue-800 border border-blue-200";
                       } else if (log.action.includes("OVERRIDE")) {
-                        actionBadge = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                        actionBadge = "bg-amber-50 text-amber-800 border border-amber-200";
                       } else if (log.action === "SYSTEM_START" || log.action === "SYSTEM_STOP") {
                         actionBadge = log.action === "SYSTEM_START" 
-                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                          : "bg-red-500/10 text-red-400 border-red-500/20";
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : "bg-red-50 text-red-800 border border-red-200";
                       }
 
                       return (
                         <div 
                           key={log.id} 
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-zinc-900/30 hover:bg-zinc-900/60 border border-zinc-800/50 p-3.5 rounded-xl transition duration-150"
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-slate-50 hover:bg-slate-100/60 border border-brand-soft/30 p-3.5 rounded-xl transition duration-150"
                         >
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -962,15 +962,15 @@ export default function App() {
                                       setActiveTab("instances");
                                     }
                                   }}
-                                  className="text-[10px] bg-zinc-850 hover:bg-zinc-800 text-zinc-300 font-medium px-2 py-0.5 rounded-md border border-zinc-750 transition flex items-center gap-1"
+                                  className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-2 py-0.5 rounded-md border border-brand-soft/30 transition flex items-center gap-1"
                                   title={`Click to view ${log.resource_name}`}
                                 >
                                   🏷️ {log.resource_name}
                                 </button>
                               )}
-                              <span className="text-[10px] text-zinc-500 font-mono">{formattedTime}</span>
+                              <span className="text-[10px] text-brand-slate font-mono">{formattedTime}</span>
                             </div>
-                            <p className="text-zinc-300 text-xs leading-relaxed">{log.message}</p>
+                            <p className="text-slate-700 text-xs leading-relaxed">{log.message}</p>
                           </div>
                         </div>
                       );
@@ -998,14 +998,14 @@ export default function App() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="glass-input w-full px-4 py-2.5 pl-10 rounded-xl text-white placeholder-zinc-500 text-sm"
                     />
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-zinc-500" />
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-brand-slate" />
                   </div>
 
                   <div className="flex flex-wrap gap-4 w-full md:w-auto">
                     <select
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
-                      className="glass-input px-4 py-2.5 rounded-xl text-sm bg-dark-800 text-white min-w-[120px]"
+                      className="glass-input px-4 py-2.5 rounded-xl text-sm bg-white text-slate-800 border border-brand-soft/40 min-w-[120px]"
                     >
                       <option value="all">All Types</option>
                       <option value="ec2">EC2 Instances</option>
@@ -1015,7 +1015,7 @@ export default function App() {
                     <select
                       value={regionFilter}
                       onChange={(e) => setRegionFilter(e.target.value)}
-                      className="glass-input px-4 py-2.5 rounded-xl text-sm bg-dark-800 text-white min-w-[140px]"
+                      className="glass-input px-4 py-2.5 rounded-xl text-sm bg-white text-slate-800 border border-brand-soft/40 min-w-[140px]"
                     >
                       <option value="all">All Regions</option>
                       {uniqueRegions.map(reg => (
@@ -1028,7 +1028,7 @@ export default function App() {
                 {/* Grid of Instances */}
                 {filteredInstances.length === 0 ? (
                   <div className="glass-panel p-12 rounded-2xl text-center">
-                    <p className="text-zinc-500">No resources found matching current criteria.</p>
+                    <p className="text-brand-slate">No resources found matching current criteria.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1049,17 +1049,17 @@ export default function App() {
                           <div>
                             <div className="flex justify-between items-start mb-2">
                               <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
-                                inst.type === "ec2" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"
+                                inst.type === "ec2" ? "bg-blue-500/10 text-brand-teal" : "bg-purple-500/10 text-purple-400"
                               }`}>
                                 {inst.type === "ec2" ? <Server className="h-3 w-3" /> : <Database className="h-3 w-3" />}
                                 {inst.type.toUpperCase()}
                               </span>
                               
-                              <span className="text-xs font-mono text-zinc-500">{inst.region}</span>
+                              <span className="text-xs font-mono text-brand-slate">{inst.region}</span>
                             </div>
 
-                            <h4 className="font-bold text-white text-lg truncate mb-1" title={inst.name}>{inst.name}</h4>
-                            <p className="text-zinc-500 text-xs font-mono mb-4 truncate">{inst.id}</p>
+                            <h4 className="font-bold text-slate-800 text-lg truncate mb-1" title={inst.name}>{inst.name}</h4>
+                            <p className="text-brand-slate text-xs font-mono mb-4 truncate">{inst.id}</p>
 
                             {/* Status badge */}
                             <div className="flex items-center gap-2 mb-4">
@@ -1069,15 +1069,15 @@ export default function App() {
                               }`}></span>
                               <span className={`text-sm font-semibold capitalize ${
                                 inst.status === "running" ? "text-emerald-400" :
-                                inst.status === "stopped" ? "text-zinc-400" : "text-yellow-400"
+                                inst.status === "stopped" ? "text-slate-500" : "text-yellow-400"
                               }`}>{inst.status}</span>
                             </div>
                           </div>
 
                           {/* Bottom section: brief metadata summary */}
-                          <div className="mt-4 pt-4 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-500">
+                          <div className="mt-4 pt-4 border-t border-brand-soft/20 flex items-center justify-between text-xs text-brand-slate">
                             <span>Schedules status:</span>
-                            <span className={`font-semibold ${activeSchedulesCount > 0 ? "text-blue-400" : "text-zinc-400"}`}>
+                            <span className={`font-semibold ${activeSchedulesCount > 0 ? "text-brand-teal" : "text-slate-500"}`}>
                               {activeSchedulesCount > 0 
                                 ? `${activeSchedulesCount} Sleep Window${activeSchedulesCount > 1 ? "s" : ""}` 
                                 : "Running 24/7"}
