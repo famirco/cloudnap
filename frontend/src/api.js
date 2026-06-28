@@ -82,6 +82,7 @@ export const api = {
   
   instances: {
     list: () => request("/instances"),
+    logs: () => request("/instances/logs"),
     addSchedule: (id, startTime, endTime) => request(`/instances/${id}/schedules`, {
       method: "POST",
       body: { start_time: startTime, end_time: endTime }

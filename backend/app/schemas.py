@@ -51,3 +51,16 @@ class ResourceOut(ResourceBase):
     tags: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Action Log Schemas ---
+class ActionLogOut(BaseModel):
+    id: int
+    resource_id: Optional[str] = None
+    resource_name: Optional[str] = None
+    action: str
+    message: str
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+

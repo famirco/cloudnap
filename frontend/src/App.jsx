@@ -26,6 +26,7 @@ export default function App() {
   
   // Data States
   const [instances, setInstances] = useState([]);
+  const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [utcTime, setUtcTime] = useState("");
@@ -34,6 +35,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [regionFilter, setRegionFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [logSearchQuery, setLogSearchQuery] = useState("");
 
   // States to track sleep window creation per instance (Custom Calendar Range Picker)
   const [addingWindowForInstanceId, setAddingWindowForInstanceId] = useState(null);
@@ -123,12 +125,16 @@ export default function App() {
     setError("");
     const startTime = Date.now();
     try {
-      const instList = await api.instances.list();
+      const [instList, logList] = await Promise.all([
+        api.instances.list(),
+        api.instances.logs()
+      ]);
       const elapsed = Date.now() - startTime;
       if (elapsed < 800) {
         await new Promise(resolve => setTimeout(resolve, 800 - elapsed));
       }
       setInstances(instList);
+      setLogs(logList || []);
     } catch (err) {
       setError(err.message || "Failed to retrieve data");
     } finally {
@@ -865,6 +871,113 @@ export default function App() {
                 <h3 className="text-2xl font-bold text-white">{metrics.sleepingInstances} / {metrics.totalInstances}</h3>
                 <p className="text-zinc-400 text-sm mt-1">Stopped (Inactive)</p>
               </div>
+            </div>
+
+            {/* Logs & Audit Trail */}
+            <div className="glass-panel p-6 rounded-2xl space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-blue-400" />
+                    System Logs & Audit Trail
+                  </h3>
+                  <p className="text-zinc-500 text-xs mt-1">Audit log of system actions and user schedule operations</p>
+                </div>
+                
+                {/* Search Logs */}
+                <div className="relative w-full sm:w-72">
+                  <input
+                    type="text"
+                    placeholder="Search logs by resource, action, message..."
+                    value={logSearchQuery}
+                    onChange={(e) => setLogSearchQuery(e.target.value)}
+                    className="glass-input w-full px-4 py-2 pl-10 rounded-xl text-white placeholder-zinc-500 text-xs"
+                  />
+                  <Search className="absolute left-3 top-3 h-3.5 w-3.5 text-zinc-500" />
+                  {logSearchQuery && (
+                    <button 
+                      onClick={() => setLogSearchQuery("")}
+                      className="absolute right-3 top-3 text-zinc-500 hover:text-zinc-300 animate-fadeIn"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Logs list */}
+              {(() => {
+                const filteredLogs = logs.filter(log => {
+                  const query = logSearchQuery.toLowerCase();
+                  return (
+                    (log.message || "").toLowerCase().includes(query) ||
+                    (log.resource_name || "").toLowerCase().includes(query) ||
+                    (log.resource_id || "").toLowerCase().includes(query) ||
+                    (log.action || "").toLowerCase().includes(query)
+                  );
+                });
+
+                if (filteredLogs.length === 0) {
+                  return (
+                    <div className="text-center py-8 border border-dashed border-zinc-800/80 rounded-xl bg-zinc-900/10">
+                      <p className="text-zinc-500 text-xs italic">No logs found matching criteria.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {filteredLogs.map((log) => {
+                      const logDate = new Date(log.timestamp.endsWith("Z") ? log.timestamp : log.timestamp + "Z");
+                      const formattedTime = logDate.toISOString().replace("T", " ").substring(0, 19) + " UTC";
+                      
+                      // Different actions -> different styles
+                      let actionBadge = "bg-zinc-800 text-zinc-400 border-zinc-700/50";
+                      if (log.action.includes("SCHEDULE")) {
+                        actionBadge = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+                      } else if (log.action.includes("OVERRIDE")) {
+                        actionBadge = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                      } else if (log.action === "SYSTEM_START" || log.action === "SYSTEM_STOP") {
+                        actionBadge = log.action === "SYSTEM_START" 
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : "bg-red-500/10 text-red-400 border-red-500/20";
+                      }
+
+                      return (
+                        <div 
+                          key={log.id} 
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-zinc-900/30 hover:bg-zinc-900/60 border border-zinc-800/50 p-3.5 rounded-xl transition duration-150"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`text-[9px] font-semibold px-2 py-0.5 rounded border ${actionBadge}`}>
+                                {log.action}
+                              </span>
+                              {log.resource_name && (
+                                <button
+                                  onClick={() => {
+                                    if (log.resource_id) {
+                                      setSelectedInstanceId(log.resource_id);
+                                      setAddingWindowForInstanceId(log.resource_id);
+                                      setActiveTab("instances");
+                                    }
+                                  }}
+                                  className="text-[10px] bg-zinc-850 hover:bg-zinc-800 text-zinc-300 font-medium px-2 py-0.5 rounded-md border border-zinc-750 transition flex items-center gap-1"
+                                  title={`Click to view ${log.resource_name}`}
+                                >
+                                  🏷️ {log.resource_name}
+                                </button>
+                              )}
+                              <span className="text-[10px] text-zinc-500 font-mono">{formattedTime}</span>
+                            </div>
+                            <p className="text-zinc-300 text-xs leading-relaxed">{log.message}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

@@ -49,3 +49,15 @@ class ResourceOverride(Base):
 
     # Relationships
     resource = relationship("Resource", back_populates="override")
+
+
+class ActionLog(Base):
+    __tablename__ = "action_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    resource_id = Column(String, nullable=True, index=True)
+    resource_name = Column(String, nullable=True, index=True)
+    action = Column(String, nullable=False)  # e.g., "SET_SCHEDULE", "DELETE_SCHEDULE", "APPLY_OVERRIDE", "REMOVE_OVERRIDE", "SYSTEM_START", "SYSTEM_STOP"
+    message = Column(String, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+

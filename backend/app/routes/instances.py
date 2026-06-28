@@ -4,8 +4,8 @@ from typing import List
 from datetime import datetime, timezone
 
 from backend.app.db import get_db
-from backend.app.models import Resource, ResourceOverride, ResourceSchedule
-from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut
+from backend.app.models import Resource, ResourceOverride, ResourceSchedule, ActionLog
+from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut, ActionLogOut
 from backend.app.aws import list_resources, start_resource, stop_resource
 from backend.app.routes.auth import verify_auth
 
@@ -124,6 +124,16 @@ def add_instance_active_window(instance_id: str, payload: ResourceScheduleCreate
         end_time=end_dt
     )
     db.add(sched)
+    
+    # Log user action
+    user_log = ActionLog(
+        resource_id=instance_id,
+        resource_name=res.name,
+        action="SET_SCHEDULE",
+        message=f"User scheduled a sleep window from {start_dt.strftime('%Y-%m-%d %H:%M')} to {end_dt.strftime('%Y-%m-%d %H:%M')} UTC."
+    )
+    db.add(user_log)
+    
     db.commit()
     db.refresh(sched)
     return sched
@@ -141,6 +151,18 @@ def delete_instance_active_window(instance_id: str, schedule_id: int, db: Sessio
     if not sched:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active window schedule not found")
         
+    res = db.query(Resource).filter(Resource.id == instance_id).first()
+    res_name = res.name if res else instance_id
+    
+    # Log user action
+    user_log = ActionLog(
+        resource_id=instance_id,
+        resource_name=res_name,
+        action="DELETE_SCHEDULE",
+        message=f"User deleted the sleep window scheduled from {sched.start_time.strftime('%Y-%m-%d %H:%M')} to {sched.end_time.strftime('%Y-%m-%d %H:%M')} UTC."
+    )
+    db.add(user_log)
+    
     db.delete(sched)
     db.commit()
     return
@@ -166,6 +188,15 @@ def apply_instance_override(instance_id: str, payload: ResourceOverrideCreate, d
     else:
         override.override_type = payload.override_type
         
+    # Log user action
+    user_log = ActionLog(
+        resource_id=instance_id,
+        resource_name=res.name,
+        action="APPLY_OVERRIDE",
+        message=f"User applied a manual override to hold the resource state to {payload.override_type}."
+    )
+    db.add(user_log)
+        
     db.commit()
     db.refresh(override)
     
@@ -186,6 +217,26 @@ def remove_instance_override(instance_id: str, db: Session = Depends(get_db)):
     if not override:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active override found for this instance")
         
+    res = db.query(Resource).filter(Resource.id == instance_id).first()
+    res_name = res.name if res else instance_id
+    
+    # Log user action
+    user_log = ActionLog(
+        resource_id=instance_id,
+        resource_name=res_name,
+        action="REMOVE_OVERRIDE",
+        message="User removed the manual override, returning state control to the scheduler."
+    )
+    db.add(user_log)
+    
     db.delete(override)
     db.commit()
     return
+
+
+@router.get("/logs", response_model=List[ActionLogOut])
+def get_action_logs(db: Session = Depends(get_db)):
+    """
+    Retrieve all audit/action logs sorted by timestamp descending.
+    """
+    return db.query(ActionLog).order_by(ActionLog.timestamp.desc()).all()

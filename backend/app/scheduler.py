@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from backend.app.db import SessionLocal
-from backend.app.models import Resource, ResourceSchedule, ResourceOverride
+from backend.app.models import Resource, ResourceSchedule, ResourceOverride, ActionLog
 from backend.app.aws import list_resources, start_resource, stop_resource
 
 # Configure logging
@@ -74,11 +74,27 @@ def check_resources_job():
                 if current_status == "stopped":
                     logger.info(f"State evaluation - target is RUNNING: Starting resource {resource_id}")
                     start_resource(resource_id, resource.type, resource.region)
+                    sys_log = ActionLog(
+                        resource_id=resource_id,
+                        resource_name=resource.name,
+                        action="SYSTEM_START",
+                        message=f"System automatically started resource {resource.name} ({resource_id}) because it is outside sleep window."
+                    )
+                    db.add(sys_log)
+                    db.commit()
             elif target_state == "stopped":
                 # Stop if currently running (ignore starting/stopping transitions)
                 if current_status == "running":
                     logger.info(f"State evaluation - target is STOPPED: Stopping resource {resource_id}")
                     stop_resource(resource_id, resource.type, resource.region)
+                    sys_log = ActionLog(
+                        resource_id=resource_id,
+                        resource_name=resource.name,
+                        action="SYSTEM_STOP",
+                        message=f"System automatically stopped resource {resource.name} ({resource_id}) because it is inside sleep window."
+                    )
+                    db.add(sys_log)
+                    db.commit()
                         
     except Exception as e:
         logger.error(f"Error in check_resources_job: {e}")
