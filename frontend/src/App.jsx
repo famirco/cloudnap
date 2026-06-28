@@ -13,7 +13,8 @@ import {
   X,
   AlertTriangle,
   Moon,
-  ArrowLeft
+  ArrowLeft,
+  Settings
 } from "lucide-react";
 import { api, getStoredPassword, setStoredPassword } from "./api";
 
@@ -51,6 +52,92 @@ export default function App() {
   const [selectedDays, setSelectedDays] = useState({
     1: true, 2: true, 3: true, 4: true, 5: true, 6: false, 7: false
   });
+
+  // Settings tab states
+  const [slackEnabled, setSlackEnabled] = useState(false);
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
+  const [slackChannel, setSlackChannel] = useState("");
+  const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [telegramBotToken, setTelegramBotToken] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [testingSlack, setTestingSlack] = useState(false);
+  const [testingTelegram, setTestingTelegram] = useState(false);
+
+  const handleTestSettings = async (type) => {
+    if (type === "slack") {
+      setTestingSlack(true);
+      try {
+        await api.instances.testSettings({
+          integration_type: "slack",
+          slack_webhook_url: slackWebhookUrl,
+          slack_channel: slackChannel
+        });
+        alert("Slack test message sent successfully!");
+      } catch (err) {
+        alert(`Slack test failed: ${err.message}`);
+      } finally {
+        setTestingSlack(false);
+      }
+    } else if (type === "telegram") {
+      setTestingTelegram(true);
+      try {
+        await api.instances.testSettings({
+          integration_type: "telegram",
+          telegram_bot_token: telegramBotToken,
+          telegram_chat_id: telegramChatId
+        });
+        alert("Telegram test message sent successfully!");
+      } catch (err) {
+        alert(`Telegram test failed: ${err.message}`);
+      } finally {
+        setTestingTelegram(false);
+      }
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await api.instances.getSettings();
+      res.forEach(item => {
+        if (item.key === "slack_enabled") setSlackEnabled(item.value === "true");
+        if (item.key === "slack_webhook_url") setSlackWebhookUrl(item.value || "");
+        if (item.key === "slack_channel") setSlackChannel(item.value || "");
+        if (item.key === "telegram_enabled") setTelegramEnabled(item.value === "true");
+        if (item.key === "telegram_bot_token") setTelegramBotToken(item.value || "");
+        if (item.key === "telegram_chat_id") setTelegramChatId(item.value || "");
+      });
+    } catch (err) {
+      console.error("Failed to fetch settings:", err);
+    }
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    const payload = [
+      { key: "slack_enabled", value: String(slackEnabled) },
+      { key: "slack_webhook_url", value: slackWebhookUrl },
+      { key: "slack_channel", value: slackChannel },
+      { key: "telegram_enabled", value: String(telegramEnabled) },
+      { key: "telegram_bot_token", value: telegramBotToken },
+      { key: "telegram_chat_id", value: telegramChatId }
+    ];
+    try {
+      await api.instances.saveSettings(payload);
+      alert("Settings saved successfully.");
+    } catch (err) {
+      alert(`Failed to save settings: ${err.message}`);
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "settings") {
+      fetchSettings();
+    }
+  }, [activeTab]);
 
   // Initialize and run the dynamic UTC clock
   useEffect(() => {
@@ -897,6 +984,16 @@ export default function App() {
             <Server className="h-5 w-5" />
             Instances
           </button>
+          <button
+            onClick={() => {
+              setActiveTab("settings");
+              setSelectedInstanceId(null);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition duration-150 ${activeTab === "settings" ? "bg-blue-600/20 text-brand-teal border border-brand-teal/20 font-medium" : "text-slate-500 hover:text-zinc-200 hover:bg-slate-100"}`}
+          >
+            <Settings className="h-5 w-5" />
+            Settings
+          </button>
         </nav>
 
         {authRequired && (
@@ -1212,6 +1309,135 @@ export default function App() {
                 )}
               </>
             )}
+          </div>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Notification Settings</h2>
+                <p className="text-xs text-brand-slate mt-1">Configure Slack webhooks and Telegram bots to receive real-time scheduling notifications.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveSettings} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Slack Card */}
+              <div className="glass-panel p-6 rounded-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-brand-soft/20 pb-3">
+                  <h3 className="text-base font-bold text-brand-teal flex items-center gap-2">
+                    <span>Slack Integration</span>
+                  </h3>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={slackEnabled} 
+                      onChange={(e) => setSlackEnabled(e.target.checked)} 
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-teal"></div>
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Incoming Webhook URL</label>
+                    <input
+                      type="text"
+                      placeholder="https://hooks.slack.com/services/..."
+                      value={slackWebhookUrl}
+                      onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                      disabled={!slackEnabled}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 disabled:opacity-50"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Slack Channel / Thread Override (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. #alerts or C1234567"
+                      value={slackChannel}
+                      onChange={(e) => setSlackChannel(e.target.value)}
+                      disabled={!slackEnabled}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 disabled:opacity-50"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestSettings("slack")}
+                    disabled={!slackWebhookUrl || testingSlack}
+                    className="w-full mt-2 border border-brand-teal text-brand-teal hover:bg-brand-teal/5 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                  >
+                    {testingSlack ? "Sending Test Message..." : "⚡ Test Slack Connection"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Telegram Card */}
+              <div className="glass-panel p-6 rounded-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-brand-soft/20 pb-3">
+                  <h3 className="text-base font-bold text-brand-teal flex items-center gap-2">
+                    <span>Telegram Integration</span>
+                  </h3>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={telegramEnabled} 
+                      onChange={(e) => setTelegramEnabled(e.target.checked)} 
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-teal"></div>
+                  </label>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Bot Token</label>
+                    <input
+                      type="text"
+                      placeholder="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                      value={telegramBotToken}
+                      onChange={(e) => setTelegramBotToken(e.target.value)}
+                      disabled={!telegramEnabled}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 disabled:opacity-50 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Chat ID / Group ID</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. -100123456789 or 123456789"
+                      value={telegramChatId}
+                      onChange={(e) => setTelegramChatId(e.target.value)}
+                      disabled={!telegramEnabled}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 disabled:opacity-50 font-mono"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTestSettings("telegram")}
+                    disabled={!telegramBotToken || !telegramChatId || testingTelegram}
+                    className="w-full mt-2 border border-brand-teal text-brand-teal hover:bg-brand-teal/5 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                  >
+                    {testingTelegram ? "Sending Test Message..." : "⚡ Test Telegram Connection"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="bg-brand-teal hover:bg-brand-teal/90 text-white px-6 py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-50"
+                >
+                  {savingSettings ? "Saving Settings..." : "Save Settings"}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </main>

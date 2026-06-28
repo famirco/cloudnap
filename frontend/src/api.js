@@ -96,6 +96,15 @@ export const api = {
     }),
     deleteOverride: (id) => request(`/instances/${id}/override`, {
       method: "DELETE"
+    }),
+    getSettings: () => request("/instances/settings"),
+    saveSettings: (settingsList) => request("/instances/settings", {
+      method: "POST",
+      body: { settings: settingsList }
+    }),
+    testSettings: (payload) => request("/instances/settings/test", {
+      method: "POST",
+      body: payload
     })
   }
 };

@@ -5,6 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from backend.app.db import SessionLocal
 from backend.app.models import Resource, ResourceSchedule, ResourceOverride, ActionLog
 from backend.app.aws import list_resources, start_resource, stop_resource
+from backend.app.notifier import send_notifications
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +47,10 @@ def check_resources_job():
                 
             current_status = live_status_map[resource_id]
             
+            # If the resource has no sleep schedules and no manual overrides, skip managing it
+            if not resource.schedules and not resource.override:
+                continue
+                
             # Phase A: Calculate target state from sleep windows (default: running)
             target_state = "running"
             now_naive = now.replace(tzinfo=None) if now.tzinfo else now
@@ -109,6 +114,7 @@ def check_resources_job():
                     )
                     db.add(sys_log)
                     db.commit()
+                    send_notifications(db, sys_log.message)
             elif target_state == "stopped":
                 # Stop if currently running (ignore starting/stopping transitions)
                 if current_status == "running":
@@ -122,6 +128,7 @@ def check_resources_job():
                     )
                     db.add(sys_log)
                     db.commit()
+                    send_notifications(db, sys_log.message)
                         
     except Exception as e:
         logger.error(f"Error in check_resources_job: {e}")

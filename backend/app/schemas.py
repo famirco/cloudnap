@@ -68,3 +68,21 @@ class ActionLogOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+# --- Settings Schemas ---
+class SettingItem(BaseModel):
+    key: str
+    value: Optional[str] = None
+
+class SettingsUpdate(BaseModel):
+    settings: List[SettingItem]
+
+
+class IntegrationTestPayload(BaseModel):
+    integration_type: str
+    slack_webhook_url: Optional[str] = None
+    slack_channel: Optional[str] = None
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+
+

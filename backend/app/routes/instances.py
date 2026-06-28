@@ -4,8 +4,9 @@ from typing import List
 from datetime import datetime, timezone
 
 from backend.app.db import get_db
-from backend.app.models import Resource, ResourceOverride, ResourceSchedule, ActionLog
-from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut, ActionLogOut
+from backend.app.models import Resource, ResourceOverride, ResourceSchedule, ActionLog, Setting
+from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut, ActionLogOut, SettingItem, SettingsUpdate, IntegrationTestPayload
+from backend.app.notifier import send_notifications
 from backend.app.aws import list_resources, start_resource, stop_resource
 from backend.app.routes.auth import verify_auth
 
@@ -173,6 +174,7 @@ def add_instance_active_window(instance_id: str, payload: ResourceScheduleCreate
     
     db.commit()
     db.refresh(sched)
+    send_notifications(db, log_msg)
     return sched
 
 @router.delete("/{instance_id}/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -207,6 +209,7 @@ def delete_instance_active_window(instance_id: str, schedule_id: int, db: Sessio
     
     db.delete(sched)
     db.commit()
+    send_notifications(db, log_msg)
     return
 
 @router.post("/{instance_id}/override", response_model=ResourceOverrideOut)
@@ -241,6 +244,7 @@ def apply_instance_override(instance_id: str, payload: ResourceOverrideCreate, d
         
     db.commit()
     db.refresh(override)
+    send_notifications(db, user_log.message)
     
     # Trigger AWS action immediately to improve user experience feedback
     if payload.override_type == "START":
@@ -273,6 +277,7 @@ def remove_instance_override(instance_id: str, db: Session = Depends(get_db)):
     
     db.delete(override)
     db.commit()
+    send_notifications(db, user_log.message)
     return
 
 
@@ -282,3 +287,70 @@ def get_action_logs(db: Session = Depends(get_db)):
     Retrieve all audit/action logs sorted by timestamp descending.
     """
     return db.query(ActionLog).order_by(ActionLog.timestamp.desc()).all()
+
+
+@router.get("/settings", response_model=List[SettingItem])
+def get_settings(db: Session = Depends(get_db)):
+    """
+    Retrieve all settings.
+    """
+    return db.query(Setting).all()
+
+
+@router.post("/settings", status_code=status.HTTP_200_OK)
+def update_settings(payload: SettingsUpdate, db: Session = Depends(get_db)):
+    """
+    Create or update multiple settings.
+    """
+    for item in payload.settings:
+        setting = db.query(Setting).filter(Setting.key == item.key).first()
+        if not setting:
+            setting = Setting(key=item.key, value=item.value)
+            db.add(setting)
+        else:
+            setting.value = item.value
+    db.commit()
+    return {"message": "Settings updated successfully"}
+
+
+@router.post("/settings/test", status_code=status.HTTP_200_OK)
+def test_notification_connection(payload: IntegrationTestPayload):
+    """
+    Test sending a message to Slack or Telegram using user-provided config.
+    """
+    import httpx
+    msg = "🔔 *CloudNap Connection Test*:\nThis is a test notification from your CloudNap Instance Scheduler. Connection successful!"
+    
+    if payload.integration_type == "slack":
+        if not payload.slack_webhook_url:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slack Webhook URL is required.")
+        try:
+            body = {"text": msg}
+            if payload.slack_channel:
+                body["channel"] = payload.slack_channel
+            response = httpx.post(payload.slack_webhook_url, json=body, timeout=5.0)
+            if response.status_code != 200:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Slack returned status {response.status_code}: {response.text}")
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Slack request failed: {str(e)}")
+            
+    elif payload.integration_type == "telegram":
+        if not payload.telegram_bot_token or not payload.telegram_chat_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Telegram Bot Token and Chat ID are required.")
+        try:
+            url = f"https://api.telegram.org/bot{payload.telegram_bot_token}/sendMessage"
+            body = {
+                "chat_id": payload.telegram_chat_id,
+                "text": msg,
+                "parse_mode": "Markdown"
+            }
+            response = httpx.post(url, json=body, timeout=5.0)
+            if response.status_code != 200:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Telegram returned status {response.status_code}: {response.text}")
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Telegram request failed: {str(e)}")
+            
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid integration type.")
+        
+    return {"message": "Test notification sent successfully."}
