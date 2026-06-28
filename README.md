@@ -63,33 +63,40 @@ cloudnap/
 
 ---
 
-## 🗺️ Execution Roadmap
+## 🚀 Quick Start (Run with Docker Compose)
 
-### Step 1: Mock-Capable AWS Wrapper & Backend Setup
-*   Create `backend/requirements.txt` with FastAPI, boto3, APScheduler, etc.
-*   Implement `backend/app/aws.py` featuring Mock AWS implementation (`MOCK_AWS=true`) for developer testing.
+The easiest way to run CloudNap locally or in production is using Docker Compose:
 
-### Step 2: Database Schema & Extensible Resource-Centric Models
-*   Implement `backend/app/models.py` and `db.py` supporting self-healing migrations.
-*   Link multiple `ResourceSchedule` date-based and recurring sleep windows to a single `Resource` model.
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-username/cloudnap.git
+   cd cloudnap
+   ```
 
-### Step 3: Background Scheduler Logic
-*   Implement `backend/app/scheduler.py` using `APScheduler`.
-*   Ticks every minute to evaluate target state (running vs stopped) based on active one-time and recurring sleep windows.
+2. **Configure environment variables**:
+   Create a `.env` file in the `backend/` directory:
+   ```env
+   MOCK_AWS=true
+   APP_PASSWORD=secret123
+   DATABASE_URL=sqlite:///./data/cloudnap.db
+   ```
+   *Note: Set `MOCK_AWS=false` and configure standard AWS environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) to connect to actual AWS resources.*
 
-### Step 4: FastAPI Router & REST API
-*   Implement `backend/app/main.py` and endpoints in `backend/app/routes/`.
-*   Provide routes to discover instances, apply overrides, manage sleep windows, and query action logs.
+3. **Launch the stack**:
+   ```bash
+   docker compose up --build -d
+   ```
 
-### Step 5: High-Contrast React Frontend
-*   Create Vite + React + Tailwind CSS project in `frontend/`.
-*   Develop a sleek light UI featuring a clean instances grid, detail view routing, chronological schedules sort, and direct manual holds.
-*   Integrate a side-by-side Date Range Calendar Picker operating entirely on UTC, along with daily/weekly repeat configurations.
-*   Render a searchable and filterable Audit Trail table for operational transparency.
+4. **Access the web panel**:
+   Open [http://localhost:8000](http://localhost:8000) and authenticate using your password (`secret123`).
 
-### Step 6: Containerization & Deployment Setup
-*   Write `Dockerfile` for unified delivery.
-*   Write `docker-compose.yml` mounting SQLite database and exposing ports.
+---
+
+## 🤝 Contributing
+
+We love contributions! You can easily develop and test CloudNap locally without having an AWS account by utilizing the Mock AWS Mode.
+
+For detailed instructions on running backend hot-reloading, frontend dev servers, and code standards, please read our **[Contributing Guide](file:///Users/amir/Desktop/cloudnap/CONTRIBUTING.md)**.
 
 ---
 
