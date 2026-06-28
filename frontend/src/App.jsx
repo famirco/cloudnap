@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   Moon,
   ArrowLeft,
-  Settings
+  Settings,
+  Info
 } from "lucide-react";
 import { api, getStoredPassword, setStoredPassword } from "./api";
 
@@ -63,6 +64,7 @@ export default function App() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [testingSlack, setTestingSlack] = useState(false);
   const [testingTelegram, setTestingTelegram] = useState(false);
+  const [activeHelpModal, setActiveHelpModal] = useState(null); // null, "slack", "telegram"
 
   const handleTestSettings = async (type) => {
     if (type === "slack") {
@@ -94,6 +96,78 @@ export default function App() {
         setTestingTelegram(false);
       }
     }
+  };
+
+  const renderHelpModal = () => {
+    if (!activeHelpModal) return null;
+    const isSlack = activeHelpModal === "slack";
+
+    return (
+      <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl border border-brand-soft/35 shadow-2xl max-w-lg w-full overflow-hidden p-6 space-y-4">
+          <div className="flex justify-between items-center border-b border-brand-soft/20 pb-3">
+            <h3 className="text-base font-bold text-brand-teal flex items-center gap-2">
+              {isSlack ? "Slack Setup Guide 💬" : "Telegram Setup Guide 🤖"}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setActiveHelpModal(null)}
+              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-50 transition"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="text-xs text-slate-600 space-y-3 leading-relaxed max-h-[350px] overflow-y-auto pr-1">
+            {isSlack ? (
+              <>
+                <p>Follow these steps to create an Incoming Webhook for Slack:</p>
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Go to the <a href="https://api.slack.com/apps" target="_blank" rel="noreferrer" className="text-brand-teal font-semibold underline hover:text-brand-teal/80">Slack API Console</a>.</li>
+                  <li>Click <strong>Create New App</strong> (from scratch) and name it (e.g. <code>CloudNap</code>).</li>
+                  <li>Under <strong>Features</strong> in the sidebar, select <strong>Incoming Webhooks</strong>.</li>
+                  <li>Toggle <strong>Activate Incoming Webhooks</strong> to <strong>On</strong>.</li>
+                  <li>Scroll down and click <strong>Add New Webhook to Workspace</strong>.</li>
+                  <li>Choose the default channel to post to and click <strong>Allow</strong>.</li>
+                  <li>Copy the generated webhook URL and paste it into CloudNap.</li>
+                </ol>
+                <p className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 mt-2 text-slate-500">
+                  💡 <strong>Tip:</strong> If you want to post to different channels dynamically, configure the Slack Channel override input field in CloudNap.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>Follow these steps to configure a Telegram bot notification channel:</p>
+                <h4 className="font-bold text-slate-700 mt-2">1. Get your Bot Token:</h4>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Search for <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-brand-teal font-semibold underline hover:text-brand-teal/80">@BotFather</a> on Telegram and start a chat.</li>
+                  <li>Send <code>/newbot</code> and follow instructions to set a name and username.</li>
+                  <li>Copy the HTTP API <strong>Bot Token</strong> provided (e.g. <code>123456:ABC...</code>).</li>
+                </ol>
+
+                <h4 className="font-bold text-slate-700 mt-2">2. Get your Chat ID / Group ID:</h4>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Create a new Group or Channel in Telegram.</li>
+                  <li>Add your bot as an <strong>Administrator</strong>.</li>
+                  <li>If public, your Chat ID is <code>@your_channel_name</code>.</li>
+                  <li>If private, send a test message in the group, then forward it to <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-brand-teal font-semibold underline hover:text-brand-teal/80">@userinfobot</a> or <a href="https://t.me/GetIdsBot" target="_blank" rel="noreferrer" className="text-brand-teal font-semibold underline hover:text-brand-teal/80">@GetIdsBot</a> to retrieve the group's ID (which starts with <code>-100</code>).</li>
+                </ol>
+              </>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-brand-soft/20">
+            <button
+              type="button"
+              onClick={() => setActiveHelpModal(null)}
+              className="bg-brand-teal hover:bg-brand-teal/90 text-white px-5 py-2 rounded-xl text-xs font-semibold transition"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const fetchSettings = async () => {
@@ -1325,8 +1399,16 @@ export default function App() {
               {/* Slack Card */}
               <div className="glass-panel p-6 rounded-2xl space-y-4">
                 <div className="flex justify-between items-center border-b border-brand-soft/20 pb-3">
-                  <h3 className="text-base font-bold text-brand-teal flex items-center gap-2">
+                  <h3 className="text-base font-bold text-brand-teal flex items-center gap-1.5">
                     <span>Slack Integration</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveHelpModal("slack")}
+                      className="text-slate-400 hover:text-brand-teal transition p-1 hover:bg-slate-100 rounded-lg"
+                      title="Show Setup Guide"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
                   </h3>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -1378,8 +1460,16 @@ export default function App() {
               {/* Telegram Card */}
               <div className="glass-panel p-6 rounded-2xl space-y-4">
                 <div className="flex justify-between items-center border-b border-brand-soft/20 pb-3">
-                  <h3 className="text-base font-bold text-brand-teal flex items-center gap-2">
+                  <h3 className="text-base font-bold text-brand-teal flex items-center gap-1.5">
                     <span>Telegram Integration</span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveHelpModal("telegram")}
+                      className="text-slate-400 hover:text-brand-teal transition p-1 hover:bg-slate-100 rounded-lg"
+                      title="Show Setup Guide"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
                   </h3>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input 
@@ -1440,6 +1530,7 @@ export default function App() {
             </form>
           </div>
         )}
+        {renderHelpModal()}
       </main>
     </div>
   );
