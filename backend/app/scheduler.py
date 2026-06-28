@@ -47,53 +47,62 @@ def check_resources_job():
                 
             current_status = live_status_map[resource_id]
             
-            # If the resource has no sleep schedules and no manual overrides, skip managing it
-            if not resource.schedules and not resource.override:
+            # If the resource has no sleep schedules, no manual overrides, and no lease expiry, skip managing it
+            if not resource.schedules and not resource.override and not resource.expiry_date:
                 continue
                 
             # Phase A: Calculate target state from sleep windows (default: running)
             target_state = "running"
             now_naive = now.replace(tzinfo=None) if now.tzinfo else now
             
-            for sched in resource.schedules:
-                if not sched.schedule_type or sched.schedule_type == "ONCE":
-                    s_dt = sched.start_time.replace(tzinfo=None) if sched.start_time.tzinfo else sched.start_time
-                    e_dt = sched.end_time.replace(tzinfo=None) if sched.end_time.tzinfo else sched.end_time
-                    
-                    # Inside sleep window -> target is stopped
-                    if s_dt <= now_naive < e_dt:
-                        target_state = "stopped"
-                        break
-                else:
-                    # DAILY or WEEKLY
-                    current_weekday = now.isoweekday() # 1=Monday, 7=Sunday
-                    yesterday_weekday = 7 if current_weekday == 1 else current_weekday - 1
-                    current_time_str = now.strftime("%H:%M")
-                    
-                    days_list = [int(d) for d in (sched.days_of_week or "").split(",") if d.strip().isdigit()]
-                    t_start = sched.time_start
-                    t_end = sched.time_end
-                    
-                    if t_start and t_end:
-                        is_active = False
-                        if t_start <= t_end:
-                            # Same day window
-                            if current_weekday in days_list and t_start <= current_time_str < t_end:
-                                is_active = True
-                        else:
-                            # Midnight spanning window
-                            if current_weekday in days_list and current_time_str >= t_start:
-                                is_active = True
-                            elif yesterday_weekday in days_list and current_time_str < t_end:
-                                is_active = True
-                                
-                        if is_active:
+            # Check lease expiry first (forces target_state to stopped)
+            is_lease_expired = False
+            if resource.expiry_date:
+                r_exp = resource.expiry_date.replace(tzinfo=None) if resource.expiry_date.tzinfo else resource.expiry_date
+                if now_naive >= r_exp:
+                    target_state = "stopped"
+                    is_lease_expired = True
+
+            if not is_lease_expired:
+                for sched in resource.schedules:
+                    if not sched.schedule_type or sched.schedule_type == "ONCE":
+                        s_dt = sched.start_time.replace(tzinfo=None) if sched.start_time.tzinfo else sched.start_time
+                        e_dt = sched.end_time.replace(tzinfo=None) if sched.end_time.tzinfo else sched.end_time
+                        
+                        # Inside sleep window -> target is stopped
+                        if s_dt <= now_naive < e_dt:
                             target_state = "stopped"
                             break
+                    else:
+                        # DAILY or WEEKLY
+                        current_weekday = now.isoweekday() # 1=Monday, 7=Sunday
+                        yesterday_weekday = 7 if current_weekday == 1 else current_weekday - 1
+                        current_time_str = now.strftime("%H:%M")
+                        
+                        days_list = [int(d) for d in (sched.days_of_week or "").split(",") if d.strip().isdigit()]
+                        t_start = sched.time_start
+                        t_end = sched.time_end
+                        
+                        if t_start and t_end:
+                            is_active = False
+                            if t_start <= t_end:
+                                # Same day window
+                                if current_weekday in days_list and t_start <= current_time_str < t_end:
+                                    is_active = True
+                            else:
+                                # Midnight spanning window
+                                if current_weekday in days_list and current_time_str >= t_start:
+                                    is_active = True
+                                elif yesterday_weekday in days_list and current_time_str < t_end:
+                                    is_active = True
+                                    
+                            if is_active:
+                                target_state = "stopped"
+                                break
             
             # Phase B: Evaluate active manual overrides
             override = resource.override
-            if override:
+            if override and not is_lease_expired:
                 # Override is active - it dictates target state
                 if override.override_type == "START":
                     target_state = "running"
@@ -120,11 +129,16 @@ def check_resources_job():
                 if current_status == "running":
                     logger.info(f"State evaluation - target is STOPPED: Stopping resource {resource_id}")
                     stop_resource(resource_id, resource.type, resource.region)
+                    
+                    msg = f"System automatically stopped resource {resource.name} ({resource_id}) because it is inside sleep window."
+                    if is_lease_expired:
+                        msg = f"Lease for resource {resource.name} ({resource_id}) expired on {resource.expiry_date.strftime('%Y-%m-%d %H:%M')} UTC. System automatically stopped it."
+                        
                     sys_log = ActionLog(
                         resource_id=resource_id,
                         resource_name=resource.name,
                         action="SYSTEM_STOP",
-                        message=f"System automatically stopped resource {resource.name} ({resource_id}) because it is inside sleep window."
+                        message=msg
                     )
                     db.add(sys_log)
                     db.commit()

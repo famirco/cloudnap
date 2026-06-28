@@ -105,6 +105,10 @@ export const api = {
     testSettings: (payload) => request("/instances/settings/test", {
       method: "POST",
       body: payload
+    }),
+    setExpiry: (id, expiryDate) => request(`/instances/${id}/expiry`, {
+      method: "POST",
+      body: { expiry_date: expiryDate }
     })
   }
 };

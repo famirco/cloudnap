@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from backend.app.db import get_db
 from backend.app.models import Resource, ResourceOverride, ResourceSchedule, ActionLog, Setting
-from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut, ActionLogOut, SettingItem, SettingsUpdate, IntegrationTestPayload
+from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut, ActionLogOut, SettingItem, SettingsUpdate, IntegrationTestPayload, SetExpiryPayload
 from backend.app.notifier import send_notifications
 from backend.app.aws import list_resources, start_resource, stop_resource
 from backend.app.routes.auth import verify_auth
@@ -354,3 +354,38 @@ def test_notification_connection(payload: IntegrationTestPayload):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid integration type.")
         
     return {"message": "Test notification sent successfully."}
+
+
+@router.post("/{instance_id}/expiry", response_model=ResourceOut)
+def set_instance_expiry(instance_id: str, payload: SetExpiryPayload, db: Session = Depends(get_db)):
+    """
+    Set or clear lease expiry datetime on a resource.
+    """
+    res = db.query(Resource).filter(Resource.id == instance_id).first()
+    if not res:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found")
+        
+    exp_dt = payload.expiry_date
+    if exp_dt:
+        # Strip timezone for storing in SQLite
+        exp_dt = exp_dt.replace(tzinfo=None) if exp_dt.tzinfo else exp_dt
+        res.expiry_date = exp_dt
+        log_msg = f"User set lease expiry for resource {res.name} ({instance_id}) to {exp_dt.strftime('%Y-%m-%d %H:%M')} UTC."
+        action = "SET_LEASE"
+    else:
+        res.expiry_date = None
+        log_msg = f"User cleared lease expiry for resource {res.name} ({instance_id})."
+        action = "CLEAR_LEASE"
+        
+    user_log = ActionLog(
+        resource_id=instance_id,
+        resource_name=res.name,
+        action=action,
+        message=log_msg
+    )
+    db.add(user_log)
+    db.commit()
+    db.refresh(res)
+    
+    send_notifications(db, log_msg)
+    return res

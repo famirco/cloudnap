@@ -66,6 +66,36 @@ export default function App() {
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [activeHelpModal, setActiveHelpModal] = useState(null); // null, "slack", "telegram"
 
+  // Lease expiry states
+  const [newExpiryDateStr, setNewExpiryDateStr] = useState("");
+  const [newExpiryTimeStr, setNewExpiryTimeStr] = useState("18:00");
+
+  const handleSetExpiry = async (instanceId, instanceName) => {
+    let payloadDate = null;
+    if (newExpiryDateStr) {
+      const parsed = parseDateString(newExpiryDateStr);
+      if (!parsed) {
+        alert("Please enter a valid expiry date in YYYY/MM/DD format.");
+        return;
+      }
+      const parsedTime = parseTimeString(newExpiryTimeStr);
+      const utcDate = new Date(Date.UTC(parsed.y, parsed.m, parsed.d, parsedTime.h, parsedTime.m));
+      payloadDate = utcDate.toISOString();
+    } else {
+      if (!confirm("Are you sure you want to clear the lease expiry date?")) {
+        return;
+      }
+    }
+
+    try {
+      await api.instances.setExpiry(instanceId, payloadDate);
+      alert(payloadDate ? "Lease expiry set successfully!" : "Lease expiry cleared!");
+      fetchData(); // reload
+    } catch (err) {
+      alert(`Failed to set lease expiry: ${err.message}`);
+    }
+  };
+
   const handleTestSettings = async (type) => {
     if (type === "slack") {
       setTestingSlack(true);
@@ -865,160 +895,248 @@ export default function App() {
             )}
           </div>
 
-          {/* Right panel: Add Sleep Window */}
+          {/* Right panel: Add Sleep Window / Lease Expiry */}
           <div className="glass-panel p-6 rounded-2xl space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-bold text-brand-teal">Define Sleep Window</h3>
-              <span className="text-[10px] text-amber-800 font-semibold px-2 py-0.5 bg-amber-100 border border-amber-300 rounded-md">Offline/Sleep Plan</span>
+              <h3 className="text-lg font-bold text-brand-teal">
+                {schedType === "LEASE" ? "Lease Expiry (TTL)" : "Define Sleep Window"}
+              </h3>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                schedType === "LEASE" 
+                  ? "text-emerald-800 bg-emerald-100 border-emerald-300"
+                  : "text-amber-800 bg-amber-100 border-amber-300"
+              }`}>
+                {schedType === "LEASE" ? "Temporary Lease" : "Offline/Sleep Plan"}
+              </span>
             </div>
             
             <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-xl border border-brand-soft/30">
-              ℹ️ <strong class="text-brand-teal">Sleep Duration:</strong> The resource will be stopped during the sleep window, and will run normally outside of it.
+              {schedType === "LEASE" ? (
+                <>
+                  ℹ️ <strong className="text-brand-teal">Temporary Lease (TTL):</strong> Set a specific UTC date/time when this resource should be permanently turned off. Once expired, the scheduler will keep the resource stopped and ignore active schedules/holds.
+                </>
+              ) : (
+                <>
+                  ℹ️ <strong className="text-brand-teal">Sleep Duration:</strong> The resource will be stopped during the sleep window, and will run normally outside of it.
+                </>
+              )}
             </p>
 
-            {/* Schedule Type Selection */}
+            {/* Schedule Type / Lease Selection Tabs */}
             <div className="space-y-1.5">
-              <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Schedule Repeat Type</label>
-              <div className="flex gap-2">
-                {["ONCE", "DAILY", "WEEKLY"].map((t) => (
+              <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Configuration Type</label>
+              <div className="flex flex-wrap gap-2">
+                {["ONCE", "DAILY", "WEEKLY", "LEASE"].map((t) => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setSchedType(t)}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition ${
+                    className={`flex-1 min-w-[70px] py-2 text-xs font-semibold rounded-xl border transition ${
                       schedType === t 
                         ? "bg-brand-teal text-white border-brand-teal" 
                         : "bg-white text-slate-700 border-brand-soft/40 hover:bg-slate-50"
                     }`}
                   >
-                    {t === "ONCE" ? "One-time" : t === "DAILY" ? "Daily" : "Weekly"}
+                    {t === "ONCE" ? "One-time" : t === "DAILY" ? "Daily" : t === "WEEKLY" ? "Weekly" : "Lease Expiry"}
                   </button>
                 ))}
               </div>
             </div>
 
-            {schedType === "WEEKLY" && (
-              <div className="space-y-1.5">
-                <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Active Days</label>
-                <div className="grid grid-cols-7 gap-1.5 text-center">
-                  {[
-                    { id: 1, label: "M" },
-                    { id: 2, label: "T" },
-                    { id: 3, label: "W" },
-                    { id: 4, label: "T" },
-                    { id: 5, label: "F" },
-                    { id: 6, label: "S" },
-                    { id: 7, label: "S" },
-                  ].map((day) => (
+            {schedType === "LEASE" ? (
+              // LEASE CONFIGURATION TAB
+              <div className="space-y-4">
+                <div className="bg-slate-50 p-3.5 rounded-xl border border-brand-soft/20 text-xs">
+                  <span className="font-semibold text-slate-700 block text-[11px]">Current Expiry Status</span>
+                  {inst.expiry_date ? (
+                    <div className="mt-1.5 space-y-1">
+                      <span className="text-red-800 font-mono font-semibold block">
+                        🛑 EXPIRES: {new Date(inst.expiry_date + "Z").toISOString().replace("T", " ").substring(0, 16)} UTC
+                      </span>
+                      <span className="text-[10px] text-slate-500 block">
+                        {new Date() > new Date(inst.expiry_date + "Z") 
+                          ? "⚠️ Lease has expired! The resource is locked in STOPPED state." 
+                          : `Active (Expires in ${Math.round((new Date(inst.expiry_date + "Z") - new Date()) / (1000 * 60 * 60 * 24))} days)`}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-500 italic block mt-1 text-[11px]">No lease expiry set (Runs indefinitely)</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Expiry Date</label>
+                    <input
+                      type="text"
+                      placeholder="YYYY/MM/DD"
+                      value={newExpiryDateStr}
+                      onChange={(e) => setNewExpiryDateStr(e.target.value)}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Expiry Time (UTC)</label>
+                    <input
+                      type="text"
+                      placeholder="HH:MM"
+                      value={newExpiryTimeStr}
+                      onChange={(e) => setNewExpiryTimeStr(e.target.value)}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleSetExpiry(inst.id, inst.name)}
+                    className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white py-2.5 rounded-xl text-xs font-semibold transition"
+                  >
+                    Set Expiry Date
+                  </button>
+                  {inst.expiry_date && (
                     <button
-                      key={day.id}
                       type="button"
-                      onClick={() => setSelectedDays(prev => ({ ...prev, [day.id]: !prev[day.id] }))}
-                      className={`py-2 text-xs font-semibold rounded-lg border transition ${
-                        selectedDays[day.id]
-                          ? "bg-brand-teal text-white border-brand-teal"
-                          : "bg-white text-slate-700 border-brand-soft/40 hover:bg-slate-50"
-                      }`}
+                      onClick={async () => {
+                        setNewExpiryDateStr("");
+                        await api.instances.setExpiry(inst.id, null);
+                        fetchData();
+                      }}
+                      className="px-4 border border-red-500 text-red-500 hover:bg-red-50 py-2.5 rounded-xl text-xs font-semibold transition"
                     >
-                      {day.label}
+                      Clear Lease
                     </button>
-                  ))}
+                  )}
                 </div>
               </div>
+            ) : (
+              // SLEEP WINDOW CONFIGURATION TABS
+              <div className="space-y-4">
+                {schedType === "WEEKLY" && (
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">Active Days</label>
+                    <div className="grid grid-cols-7 gap-1.5 text-center">
+                      {[
+                        { id: 1, label: "M" },
+                        { id: 2, label: "T" },
+                        { id: 3, label: "W" },
+                        { id: 4, label: "T" },
+                        { id: 5, label: "F" },
+                        { id: 6, label: "S" },
+                        { id: 7, label: "S" },
+                      ].map((day) => (
+                        <button
+                          key={day.id}
+                          type="button"
+                          onClick={() => setSelectedDays(prev => ({ ...prev, [day.id]: !prev[day.id] }))}
+                          className={`py-2 text-xs font-semibold rounded-lg border transition ${
+                            selectedDays[day.id]
+                              ? "bg-brand-teal text-white border-brand-teal"
+                              : "bg-white text-slate-700 border-brand-soft/40 hover:bg-slate-50"
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {schedType === "ONCE" && renderCalendar()}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">
+                      {schedType === "ONCE" ? "Turn OFF date & time" : "Turn OFF time"}
+                    </label>
+                    {schedType === "ONCE" && (
+                      <input
+                        type="text"
+                        placeholder="YYYY/MM/DD"
+                        value={newSleepStartStr}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewSleepStartStr(val);
+                          const parsed = parseDateString(val);
+                          if (parsed) {
+                            setCalendarStartVal(new Date(parsed.y, parsed.m, parsed.d));
+                          }
+                        }}
+                        className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
+                      />
+                    )}
+                    <input
+                      type="text"
+                      placeholder="HH:MM"
+                      value={newSleepStartTimeStr}
+                      onChange={(e) => setNewSleepStartTimeStr(e.target.value)}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
+                    />
+                    {schedType === "ONCE" && newSleepStartStr && (
+                      <span className="block text-[9px] text-brand-slate font-mono">
+                        UTC: {(() => {
+                          const parsed = parseDateString(newSleepStartStr);
+                          if (!parsed) return "Invalid Date";
+                          const timeVal = parseTimeString(newSleepStartTimeStr);
+                          const d = new Date(Date.UTC(parsed.y, parsed.m, parsed.d, timeVal.h, timeVal.m));
+                          return d.toISOString().replace("T", " ").substring(0, 16) + " UTC";
+                        })()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">
+                      {schedType === "ONCE" ? "Turn ON date & time" : "Turn ON time"}
+                    </label>
+                    {schedType === "ONCE" && (
+                      <input
+                        type="text"
+                        placeholder="YYYY/MM/DD"
+                        value={newSleepEndStr}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewSleepEndStr(val);
+                          const parsed = parseDateString(val);
+                          if (parsed) {
+                            setCalendarEndVal(new Date(parsed.y, parsed.m, parsed.d));
+                          }
+                        }}
+                        className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
+                      />
+                    )}
+                    <input
+                      type="text"
+                      placeholder="HH:MM"
+                      value={newSleepEndTimeStr}
+                      onChange={(e) => setNewSleepEndTimeStr(e.target.value)}
+                      className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
+                    />
+                    {schedType === "ONCE" && newSleepEndStr && (
+                      <span className="block text-[9px] text-brand-slate font-mono">
+                        UTC: {(() => {
+                          const parsed = parseDateString(newSleepEndStr);
+                          if (!parsed) return "Invalid Date";
+                          const timeVal = parseTimeString(newSleepEndTimeStr);
+                          const d = new Date(Date.UTC(parsed.y, parsed.m, parsed.d, timeVal.h, timeVal.m));
+                          return d.toISOString().replace("T", " ").substring(0, 16) + " UTC";
+                        })()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {schedType === "ONCE" && <p className="text-[10px] text-brand-slate">For date, use YYYY/MM/DD.</p>}
+
+                <button
+                  type="button"
+                  onClick={() => handleAddWindow(inst.id, inst.name)}
+                  className="w-full bg-brand-teal hover:bg-brand-teal/90 text-white py-2.5 rounded-xl text-xs font-semibold transition"
+                >
+                  Save Sleep Window
+                </button>
+              </div>
             )}
-
-            {schedType === "ONCE" && renderCalendar()}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              <div className="space-y-1.5">
-                <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">
-                  {schedType === "ONCE" ? "Turn OFF date & time" : "Turn OFF time"}
-                </label>
-                {schedType === "ONCE" && (
-                  <input
-                    type="text"
-                    placeholder="YYYY/MM/DD"
-                    value={newSleepStartStr}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setNewSleepStartStr(val);
-                      const parsed = parseDateString(val);
-                      if (parsed) {
-                        setCalendarStartVal(new Date(parsed.y, parsed.m, parsed.d));
-                      }
-                    }}
-                    className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
-                  />
-                )}
-                <input
-                  type="text"
-                  placeholder="HH:MM"
-                  value={newSleepStartTimeStr}
-                  onChange={(e) => setNewSleepStartTimeStr(e.target.value)}
-                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
-                />
-                {schedType === "ONCE" && newSleepStartStr && (
-                  <span className="block text-[9px] text-brand-slate font-mono">
-                    UTC: {(() => {
-                      const parsed = parseDateString(newSleepStartStr);
-                      if (!parsed) return "Invalid Date";
-                      const timeVal = parseTimeString(newSleepStartTimeStr);
-                      const d = new Date(Date.UTC(parsed.y, parsed.m, parsed.d, timeVal.h, timeVal.m));
-                      return d.toISOString().replace("T", " ").substring(0, 16) + " UTC";
-                    })()}
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="block text-brand-slate text-[10px] font-semibold uppercase tracking-wider">
-                  {schedType === "ONCE" ? "Turn ON date & time" : "Turn ON time"}
-                </label>
-                {schedType === "ONCE" && (
-                  <input
-                    type="text"
-                    placeholder="YYYY/MM/DD"
-                    value={newSleepEndStr}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setNewSleepEndStr(val);
-                      const parsed = parseDateString(val);
-                      if (parsed) {
-                        setCalendarEndVal(new Date(parsed.y, parsed.m, parsed.d));
-                      }
-                    }}
-                    className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
-                  />
-                )}
-                <input
-                  type="text"
-                  placeholder="HH:MM"
-                  value={newSleepEndTimeStr}
-                  onChange={(e) => setNewSleepEndTimeStr(e.target.value)}
-                  className="glass-input w-full px-3 py-2 rounded-xl text-xs text-slate-800 bg-white border border-brand-soft/40 font-mono"
-                />
-                {schedType === "ONCE" && newSleepEndStr && (
-                  <span className="block text-[9px] text-brand-slate font-mono">
-                    UTC: {(() => {
-                      const parsed = parseDateString(newSleepEndStr);
-                      if (!parsed) return "Invalid Date";
-                      const timeVal = parseTimeString(newSleepEndTimeStr);
-                      const d = new Date(Date.UTC(parsed.y, parsed.m, parsed.d, timeVal.h, timeVal.m));
-                      return d.toISOString().replace("T", " ").substring(0, 16) + " UTC";
-                    })()}
-                  </span>
-                )}
-              </div>
-            </div>
-            {schedType === "ONCE" && <p className="text-[10px] text-brand-slate">For date, use YYYY/MM/DD.</p>}
-
-            <button
-              type="button"
-              onClick={() => handleAddWindow(inst.id, inst.name)}
-              className="w-full bg-brand-teal hover:bg-brand-teal/90 text-white py-2.5 rounded-xl text-xs font-semibold transition"
-            >
-              Save Sleep Window
-            </button>
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ An open-source, self-hosted AWS Instance Scheduler designed to run inside a sing
 11. **State-Based Self-Healing**: Scheduler ticks are range-based (every minute) rather than event-triggered, ensuring instances heal to their target state even after container restarts or host downtime.
 12. **Mock Mode for Testing**: Run locally without any AWS credentials or active AWS resources by enabling `MOCK_AWS=true`.
 13. **Slack & Telegram Integrations**: Real-time notifications dispatched to Slack incoming webhooks and Telegram Bot APIs on scheduling creations, override adjustments, and automated system state corrections. Features a dedicated sidebar **Settings** panel supporting active toggles, optional Slack channel overrides, and instant connection test message buttons.
+14. **Resource Lease Expiry (TTL)**: Assign temporary leases to developers or teams by specifying a precise UTC lease expiration date and time. Once expired, the scheduler automatically stops the resource, locks it in a stopped state, and broadcasts alert notifications to Slack/Telegram.
 
 ---
 

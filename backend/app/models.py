@@ -16,6 +16,7 @@ class Resource(Base):
     custom_cost_per_hour = Column(Float, nullable=True)
     
     last_scanned_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expiry_date = Column(DateTime, nullable=True) # Lease Expiry Date/Time (UTC)
 
     # Relationships
     # A resource can have multiple scheduled active windows (one-to-many)

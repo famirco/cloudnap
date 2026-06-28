@@ -29,6 +29,19 @@ def init_db():
     from sqlalchemy import inspect
     inspector = inspect(engine)
     
+    # 0. Migrate resources
+    if "resources" in inspector.get_table_names():
+        columns = [c["name"] for c in inspector.get_columns("resources")]
+        if "expiry_date" not in columns:
+            try:
+                from backend.app.models import Resource, ResourceSchedule, ResourceOverride
+                ResourceOverride.__table__.drop(bind=engine, checkfirst=True)
+                ResourceSchedule.__table__.drop(bind=engine, checkfirst=True)
+                Resource.__table__.drop(bind=engine)
+                print("Old resources table dropped for schema upgrade.")
+            except Exception as e:
+                print(f"Failed to drop old resources table: {e}")
+
     # 1. Migrate resource_overrides
     if "resource_overrides" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("resource_overrides")]

@@ -46,6 +46,7 @@ class ResourceBase(BaseModel):
 
 class ResourceOut(ResourceBase):
     last_scanned_at: datetime
+    expiry_date: Optional[datetime] = None
     schedules: List[ResourceScheduleOut] = []
     override: Optional[ResourceOverrideOut] = None
     
@@ -55,6 +56,10 @@ class ResourceOut(ResourceBase):
     tags: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SetExpiryPayload(BaseModel):
+    expiry_date: Optional[datetime] = None
 
 
 # --- Action Log Schemas ---
