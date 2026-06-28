@@ -140,7 +140,7 @@
 [data-theme="dark"] h2, 
 [data-theme="dark"] h3, 
 [data-theme="dark"] h4 {
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .text-slate-800 {

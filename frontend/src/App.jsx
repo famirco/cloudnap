@@ -1161,10 +1161,10 @@ export default function App() {
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Sidebar */}
       <aside className="w-full md:w-64 glass-panel md:min-h-screen flex flex-col border-r border-brand-soft/30">
-        <div className="p-6 flex items-center gap-3 border-b border-brand-soft/30">
-          <span className="text-3xl">😴</span>
+        <div className="p-6 flex items-center gap-3 border-b border-brand-soft/30 animate-fadeIn">
+          <img src="/favicon.svg" alt="CloudNap Logo" className="h-9 w-9 rounded-xl shadow-lg shadow-brand-teal/20" />
           <div>
-            <h1 className="font-bold text-lg leading-tight text-white">CloudNap</h1>
+            <h1 className="font-bold text-lg leading-tight text-slate-800">CloudNap</h1>
             <p className="text-brand-slate text-xs font-mono">SELF-HOSTED</p>
           </div>
         </div>
