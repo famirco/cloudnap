@@ -51,13 +51,40 @@ def check_resources_job():
             now_naive = now.replace(tzinfo=None) if now.tzinfo else now
             
             for sched in resource.schedules:
-                s_dt = sched.start_time.replace(tzinfo=None) if sched.start_time.tzinfo else sched.start_time
-                e_dt = sched.end_time.replace(tzinfo=None) if sched.end_time.tzinfo else sched.end_time
-                
-                # Inside sleep window -> target is stopped
-                if s_dt <= now_naive < e_dt:
-                    target_state = "stopped"
-                    break
+                if not sched.schedule_type or sched.schedule_type == "ONCE":
+                    s_dt = sched.start_time.replace(tzinfo=None) if sched.start_time.tzinfo else sched.start_time
+                    e_dt = sched.end_time.replace(tzinfo=None) if sched.end_time.tzinfo else sched.end_time
+                    
+                    # Inside sleep window -> target is stopped
+                    if s_dt <= now_naive < e_dt:
+                        target_state = "stopped"
+                        break
+                else:
+                    # DAILY or WEEKLY
+                    current_weekday = now.isoweekday() # 1=Monday, 7=Sunday
+                    yesterday_weekday = 7 if current_weekday == 1 else current_weekday - 1
+                    current_time_str = now.strftime("%H:%M")
+                    
+                    days_list = [int(d) for d in (sched.days_of_week or "").split(",") if d.strip().isdigit()]
+                    t_start = sched.time_start
+                    t_end = sched.time_end
+                    
+                    if t_start and t_end:
+                        is_active = False
+                        if t_start <= t_end:
+                            # Same day window
+                            if current_weekday in days_list and t_start <= current_time_str < t_end:
+                                is_active = True
+                        else:
+                            # Midnight spanning window
+                            if current_weekday in days_list and current_time_str >= t_start:
+                                is_active = True
+                            elif yesterday_weekday in days_list and current_time_str < t_end:
+                                is_active = True
+                                
+                        if is_active:
+                            target_state = "stopped"
+                            break
             
             # Phase B: Evaluate active manual overrides
             override = resource.override

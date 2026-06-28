@@ -4,8 +4,12 @@ from datetime import datetime
 
 # --- Resource Schedule (Sleep Windows) Schemas ---
 class ResourceScheduleBase(BaseModel):
-    start_time: datetime = Field(..., description="Sleep window start datetime (UTC)")
-    end_time: datetime = Field(..., description="Sleep window end datetime (UTC)")
+    schedule_type: str = Field("ONCE", description="ONCE, DAILY, WEEKLY")
+    start_time: Optional[datetime] = Field(None, description="Sleep window start datetime (UTC) for ONCE")
+    end_time: Optional[datetime] = Field(None, description="Sleep window end datetime (UTC) for ONCE")
+    time_start: Optional[str] = Field(None, description="Sleep window start time HH:MM (UTC)")
+    time_end: Optional[str] = Field(None, description="Sleep window end time HH:MM (UTC)")
+    days_of_week: Optional[str] = Field(None, description="Comma-separated weekdays 1-7 (1=Mon, 7=Sun)")
 
 class ResourceScheduleCreate(ResourceScheduleBase):
     pass

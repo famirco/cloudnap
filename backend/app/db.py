@@ -43,7 +43,7 @@ def init_db():
     # 2. Migrate resource_schedules
     if "resource_schedules" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("resource_schedules")]
-        if "days" in columns or "start_day" in columns:
+        if "days" in columns or "start_day" in columns or "schedule_type" not in columns:
             try:
                 from backend.app.models import ResourceSchedule
                 ResourceSchedule.__table__.drop(bind=engine)

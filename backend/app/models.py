@@ -30,8 +30,15 @@ class ResourceSchedule(Base):
     id = Column(Integer, primary_key=True, index=True)
     resource_id = Column(String, ForeignKey("resources.id", ondelete="CASCADE"), nullable=False)
     
-    start_time = Column(DateTime, nullable=False) # Sleep window start datetime (UTC)
-    end_time = Column(DateTime, nullable=False)   # Sleep window end datetime (UTC)
+    # One-time window columns
+    start_time = Column(DateTime, nullable=True) # Sleep window start datetime (UTC)
+    end_time = Column(DateTime, nullable=True)   # Sleep window end datetime (UTC)
+
+    # Recurring window columns
+    schedule_type = Column(String, default="ONCE", nullable=False) # "ONCE", "DAILY", "WEEKLY"
+    time_start = Column(String, nullable=True)   # "HH:MM" (UTC)
+    time_end = Column(String, nullable=True)     # "HH:MM" (UTC)
+    days_of_week = Column(String, nullable=True) # "1,2,3,4,5,6,7" (1=Monday, 7=Sunday)
 
     # Relationships
     resource = relationship("Resource", back_populates="schedules")

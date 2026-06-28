@@ -100,29 +100,66 @@ def add_instance_active_window(instance_id: str, payload: ResourceScheduleCreate
     if not res:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Instance not found")
     
-    # Strip timezone for storing in SQLite
-    start_dt = payload.start_time.replace(tzinfo=None) if payload.start_time.tzinfo else payload.start_time
-    end_dt = payload.end_time.replace(tzinfo=None) if payload.end_time.tzinfo else payload.end_time
-    
-    if end_dt <= start_dt:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="End time must be after start time."
-        )
-
-    # Validate overlap
-    overlap_error = check_overlap(res.schedules, start_dt, end_dt)
-    if overlap_error:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Sleep window conflict: {overlap_error}."
-        )
+    if payload.schedule_type == "ONCE":
+        if not payload.start_time or not payload.end_time:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="start_time and end_time are required for ONCE schedules.")
         
-    sched = ResourceSchedule(
-        resource_id=instance_id,
-        start_time=start_dt,
-        end_time=end_dt
-    )
+        # Strip timezone for storing in SQLite
+        start_dt = payload.start_time.replace(tzinfo=None) if payload.start_time.tzinfo else payload.start_time
+        end_dt = payload.end_time.replace(tzinfo=None) if payload.end_time.tzinfo else payload.end_time
+        
+        if end_dt <= start_dt:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="End time must be after start time."
+            )
+
+        # Validate overlap only with existing ONCE schedules
+        once_schedules = [s for s in res.schedules if s.schedule_type == "ONCE"]
+        overlap_error = check_overlap(once_schedules, start_dt, end_dt)
+        if overlap_error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Sleep window conflict: {overlap_error}."
+            )
+            
+        sched = ResourceSchedule(
+            resource_id=instance_id,
+            schedule_type="ONCE",
+            start_time=start_dt,
+            end_time=end_dt
+        )
+        log_msg = f"User scheduled a sleep window from {start_dt.strftime('%Y-%m-%d %H:%M')} to {end_dt.strftime('%Y-%m-%d %H:%M')} UTC."
+    
+    elif payload.schedule_type in ("DAILY", "WEEKLY"):
+        if not payload.time_start or not payload.time_end:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="time_start and time_end are required for recurring schedules.")
+        
+        import re
+        time_pattern = re.compile(r"^\d{2}:\d{2}$")
+        if not time_pattern.match(payload.time_start) or not time_pattern.match(payload.time_end):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Time fields must be in HH:MM format.")
+            
+        sh, sm = map(int, payload.time_start.split(":"))
+        eh, em = map(int, payload.time_end.split(":"))
+        if sh < 0 or sh > 23 or sm < 0 or sm > 59 or eh < 0 or eh > 23 or em < 0 or em > 59:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid hours or minutes.")
+            
+        days = payload.days_of_week if payload.schedule_type == "WEEKLY" else "1,2,3,4,5,6,7"
+        if payload.schedule_type == "WEEKLY" and not days:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="days_of_week is required for WEEKLY schedules.")
+            
+        sched = ResourceSchedule(
+            resource_id=instance_id,
+            schedule_type=payload.schedule_type,
+            time_start=payload.time_start,
+            time_end=payload.time_end,
+            days_of_week=days
+        )
+        log_msg = f"User scheduled a recurring {payload.schedule_type.lower()} sleep window from {payload.time_start} to {payload.time_end} UTC."
+    else:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid schedule type.")
+        
     db.add(sched)
     
     # Log user action
@@ -130,7 +167,7 @@ def add_instance_active_window(instance_id: str, payload: ResourceScheduleCreate
         resource_id=instance_id,
         resource_name=res.name,
         action="SET_SCHEDULE",
-        message=f"User scheduled a sleep window from {start_dt.strftime('%Y-%m-%d %H:%M')} to {end_dt.strftime('%Y-%m-%d %H:%M')} UTC."
+        message=log_msg
     )
     db.add(user_log)
     
@@ -154,12 +191,17 @@ def delete_instance_active_window(instance_id: str, schedule_id: int, db: Sessio
     res = db.query(Resource).filter(Resource.id == instance_id).first()
     res_name = res.name if res else instance_id
     
+    if sched.schedule_type == "ONCE":
+        log_msg = f"User deleted the sleep window scheduled from {sched.start_time.strftime('%Y-%m-%d %H:%M')} to {sched.end_time.strftime('%Y-%m-%d %H:%M')} UTC."
+    else:
+        log_msg = f"User deleted the recurring {sched.schedule_type.lower()} sleep window scheduled from {sched.time_start} to {sched.time_end} UTC."
+        
     # Log user action
     user_log = ActionLog(
         resource_id=instance_id,
         resource_name=res_name,
         action="DELETE_SCHEDULE",
-        message=f"User deleted the sleep window scheduled from {sched.start_time.strftime('%Y-%m-%d %H:%M')} to {sched.end_time.strftime('%Y-%m-%d %H:%M')} UTC."
+        message=log_msg
     )
     db.add(user_log)
     

@@ -8,21 +8,24 @@ An open-source, self-hosted AWS Instance Scheduler designed to run inside a sing
 
 1. **Auto-Discovery**: Automatically scan and list EC2 and RDS instances across selected AWS regions.
 2. **Date-Based Sleep Windows (Sleep Duration)**: Define date and time ranges (Turn OFF date to Turn ON date) where the resource must be stopped (sleeping). Outside of these ranges, the resource automatically runs.
-3. **Resource Details Routing & Chronological View**: Clicking a resource card routes you to a dedicated detail page where all sleep schedules are displayed, sorted chronologically.
-4. **Manual Controls & Holds**: Start or stop instances manually directly from the details view with a single click. The scheduler locks the state and pauses automated schedules until "Resume Schedule" is clicked.
-5. **Operational Overview Dashboard**: Monitor your infrastructure at a glance with metrics showing Managed Resources, Scheduled Resources, Manual Holds, and Sleeping instances.
-6. **Pure UTC Engine**: The calendar picker, time text fields, and scheduling backend run entirely on UTC. No local browser timezone conversions are applied.
-7. **Conflict & Overlap Prevention**: The backend validates sleep windows on creation, rejecting overlapping date/time ranges.
-8. **State-Based Self-Healing**: Scheduler ticks are range-based (every minute) rather than event-triggered, ensuring instances heal to their target state even after container restarts or host downtime.
-9. **Mock Mode for Testing**: Run locally without any AWS credentials or active AWS resources by enabling `MOCK_AWS=true`.
+3. **Recurring Sleep Schedules (Daily & Weekly)**: Define repeating daily or weekly sleep schedules (e.g. Turn OFF daily at 22:00 and Turn ON at 08:00 UTC, or select specific active days of the week).
+4. **Searchable Audit Trail**: Interactive logs table displaying user actions (creating/deleting schedules, applying overrides) and system operations (`SYSTEM_START` / `SYSTEM_STOP`). Logs are tagged by resource and support text search.
+5. **High-Contrast Light Theme**: Sleek UI styled using the custom brand colors matching the `logs.applinker.io` color scheme (Teal Blue `#0c586c`, Slate Gray `#5f6e79`, Soft Gray borders, and Light Blue-Grey background `#f0f4f8`).
+6. **Resource Details Routing & Chronological View**: Clicking a resource card routes you to a dedicated detail page where all sleep schedules are displayed, sorted chronologically.
+7. **Manual Controls & Holds**: Start or stop instances manually directly from the details view with a single click. The scheduler locks the state and pauses automated schedules until "Resume Schedule" is clicked.
+8. **Operational Overview Dashboard**: Monitor your infrastructure at a glance with metrics showing Managed Resources, Scheduled Resources, Manual Holds, and Sleeping instances.
+9. **Pure UTC Engine**: The calendar picker, time text fields, and scheduling backend run entirely on UTC. No local browser timezone conversions are applied.
+10. **Conflict & Overlap Prevention**: The backend validates sleep windows on creation, rejecting overlapping date/time ranges.
+11. **State-Based Self-Healing**: Scheduler ticks are range-based (every minute) rather than event-triggered, ensuring instances heal to their target state even after container restarts or host downtime.
+12. **Mock Mode for Testing**: Run locally without any AWS credentials or active AWS resources by enabling `MOCK_AWS=true`.
 
 ---
 
 ## 🛠️ Tech Stack
 
 *   **Backend**: Python (FastAPI) + `boto3` (AWS SDK) + `APScheduler`.
-*   **Database**: SQLite (SQLAlchemy) for persistent resource mappings, sleep schedules, and manual overrides.
-*   **Frontend**: React (Vite) + Tailwind CSS + Glassmorphism UI (Dark Mode), served statically by FastAPI.
+*   **Database**: SQLite (SQLAlchemy) for persistent resource mappings, sleep schedules, action logs, and manual overrides.
+*   **Frontend**: React (Vite) + Tailwind CSS + High-Contrast Light Theme, served statically by FastAPI.
 *   **Containerization**: Docker & Docker Compose.
 
 ---
@@ -37,17 +40,17 @@ cloudnap/
 │   │   ├── main.py          # FastAPI entrypoint & static file mounting
 │   │   ├── config.py        # Settings & environment variables
 │   │   ├── db.py            # SQLite database & self-healing migrations
-│   │   ├── models.py        # Database models (Resource, ResourceSchedule, ResourceOverride)
+│   │   ├── models.py        # Database models (Resource, ResourceSchedule, ResourceOverride, ActionLog)
 │   │   ├── schemas.py       # Pydantic validation schemas
 │   │   ├── aws.py           # Boto3 logic & Mock AWS implementation
 │   │   ├── scheduler.py     # Background state-based check job (every minute)
 │   │   └── routes/
 │   │       ├── auth.py      # Basic/Local password authentication
-│   │       └── instances.py # Endpoints for resource management and active windows
+│   │       └── instances.py # Endpoints for resource management, active windows, and audit logs
 │   ├── requirements.txt     # Python dependencies
 │   └── Dockerfile           # Multi-stage build (React build + Python backend)
 ├── frontend/
-│   ├── src/                 # React UI code (Components, Dashboards)
+│   ├── src/                 # React UI code (Components, Dashboards, api client)
 │   ├── package.json         # Node dependencies
 │   ├── tailwind.config.js   # Custom Tailwind theme (Glassmorphism)
 │   └── vite.config.js       # Vite configuration
@@ -66,20 +69,21 @@ cloudnap/
 
 ### Step 2: Database Schema & Extensible Resource-Centric Models
 *   Implement `backend/app/models.py` and `db.py` supporting self-healing migrations.
-*   Link multiple `ResourceSchedule` date-based sleep windows to a single `Resource` model.
+*   Link multiple `ResourceSchedule` date-based and recurring sleep windows to a single `Resource` model.
 
 ### Step 3: Background Scheduler Logic
 *   Implement `backend/app/scheduler.py` using `APScheduler`.
-*   Ticks every minute to evaluate target state (running vs stopped) based on active sleep windows.
+*   Ticks every minute to evaluate target state (running vs stopped) based on active one-time and recurring sleep windows.
 
 ### Step 4: FastAPI Router & REST API
 *   Implement `backend/app/main.py` and endpoints in `backend/app/routes/`.
-*   Provide routes to discover instances, apply overrides, and manage sleep windows.
+*   Provide routes to discover instances, apply overrides, manage sleep windows, and query action logs.
 
-### Step 5: Glassmorphism React Frontend (Resource Details Page)
+### Step 5: High-Contrast React Frontend
 *   Create Vite + React + Tailwind CSS project in `frontend/`.
-*   Develop a sleek dark UI featuring a clean instances grid, details routing, chronological schedules sort, and direct manual holds.
-*   Integrate a side-by-side Date Range Calendar Picker operating entirely on UTC.
+*   Develop a sleek light UI featuring a clean instances grid, detail view routing, chronological schedules sort, and direct manual holds.
+*   Integrate a side-by-side Date Range Calendar Picker operating entirely on UTC, along with daily/weekly repeat configurations.
+*   Render a searchable and filterable Audit Trail table for operational transparency.
 
 ### Step 6: Containerization & Deployment Setup
 *   Write `Dockerfile` for unified delivery.
