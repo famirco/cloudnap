@@ -80,3 +80,47 @@
 .pulsing-glow {
   animation: pulse-glow 2s infinite;
 }
+
+/* ===================================== */
+/* DARK MODE THEME                       */
+/* ===================================== */
+[data-theme="dark"] body {
+  @apply bg-zinc-900 text-zinc-100;
+  background-color: #09090b;
+}
+
+[data-theme="dark"] .glass-panel {
+  background: #18181b;
+  border-color: #27272a;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .glass-panel-hover:hover {
+  background: #18181b;
+  border-color: #0c586c;
+  box-shadow: 0 8px 20px -6px rgba(12, 88, 108, 0.3);
+}
+
+[data-theme="dark"] .glass-input {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #e4e4e7;
+}
+
+[data-theme="dark"] .glass-input:focus {
+  background: #27272a;
+  border-color: #0c586c;
+  box-shadow: 0 0 0 2px rgba(12, 88, 108, 0.3);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #18181b;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
