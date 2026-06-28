@@ -13,6 +13,7 @@ import {
   X,
   AlertTriangle,
   Moon,
+  Sun,
   ArrowLeft,
   Settings,
   Info
@@ -25,6 +26,13 @@ export default function App() {
   const [authRequired, setAuthRequired] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
+
+  // Dark mode state
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("cloudnap-theme");
+    if (saved) return saved === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
   
   // Data States
   const [instances, setInstances] = useState([]);
@@ -274,6 +282,12 @@ export default function App() {
     checkAuth();
   }, []);
 
+
+  // Apply dark mode theme and persist preference
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+    localStorage.setItem("cloudnap-theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
   // Fetch data if authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -1185,6 +1199,16 @@ export default function App() {
           >
             <Settings className="h-5 w-5" />
             Settings
+          </button>
+
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={() => setDarkMode(prev => !prev)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition duration-150 text-slate-500 hover:text-zinc-200 hover:bg-slate-100"
+            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {darkMode ? "Light Mode" : "Dark Mode"}
           </button>
         </nav>
 
