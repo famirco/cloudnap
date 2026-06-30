@@ -225,3 +225,19 @@
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
   background: #2b4760;
 }
+
+/* Modal box styling for dark mode */
+[data-theme="dark"] .modal-box {
+  background-color: #13202b !important;
+  border-color: #1f3346 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .modal-box h3 {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .modal-box p,
+[data-theme="dark"] .modal-box strong {
+  color: #e2e8f0 !important;
+}

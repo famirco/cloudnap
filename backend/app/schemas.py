@@ -47,11 +47,14 @@ class ResourceBase(BaseModel):
 class ResourceOut(ResourceBase):
     last_scanned_at: datetime
     expiry_date: Optional[datetime] = None
+    total_hours_saved: float = 0.0
+    total_dollars_saved: float = 0.0
     schedules: List[ResourceScheduleOut] = []
     override: Optional[ResourceOverrideOut] = None
     
     # Dynamic fields populated at runtime (fetched from AWS API / aws.py)
     status: Optional[str] = None 
+    instance_type: Optional[str] = None
     cost_per_hour: Optional[float] = None
     tags: Optional[dict] = None
 

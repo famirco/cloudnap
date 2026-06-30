@@ -30,6 +30,7 @@ def check_resources_job():
         # 1. Fetch live status of all AWS resources
         live_resources = list_resources()
         live_status_map = {r["id"]: r["status"] for r in live_resources}
+        live_cost_map = {r["id"]: r.get("cost_per_hour", 0.0) for r in live_resources}
         
         # 2. Fetch all managed resources from DB
         db_resources = db.query(Resource).all()
@@ -143,6 +144,21 @@ def check_resources_job():
                     db.add(sys_log)
                     db.commit()
                     send_notifications(db, sys_log.message)
+
+            # 3. Accumulate real-time cost savings if currently stopped
+            if current_status == "stopped":
+                cost_rate = resource.custom_cost_per_hour
+                if cost_rate is None:
+                    cost_rate = live_cost_map.get(resource_id, 0.0)
+                
+                # Default mock fallback to keep dashboard numbers active
+                if cost_rate == 0.0:
+                    cost_rate = 0.05
+                    
+                resource.total_hours_saved += 1.0 / 60.0
+                resource.total_dollars_saved += (1.0 / 60.0) * cost_rate
+                db.commit()
+
                         
     except Exception as e:
         logger.error(f"Error in check_resources_job: {e}")

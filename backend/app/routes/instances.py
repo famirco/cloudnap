@@ -62,6 +62,7 @@ def get_instances(db: Session = Depends(get_db)):
             
             # Inject live AWS states
             res_schema.status = aws_info["status"]
+            res_schema.instance_type = aws_info["instance_type"]
             res_schema.tags = aws_info["tags"]
             # Cost per hour can be customized in DB, else use default AWS type mapping
             res_schema.cost_per_hour = res.custom_cost_per_hour if res.custom_cost_per_hour is not None else aws_info["cost_per_hour"]

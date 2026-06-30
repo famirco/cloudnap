@@ -16,7 +16,9 @@ import {
   Sun,
   ArrowLeft,
   Settings,
-  Info
+  Info,
+  DollarSign,
+  TrendingUp
 } from "lucide-react";
 import { api, getStoredPassword, setStoredPassword } from "./api";
 
@@ -56,6 +58,7 @@ export default function App() {
   const [newSleepStartTimeStr, setNewSleepStartTimeStr] = useState("22:00");
   const [newSleepEndTimeStr, setNewSleepEndTimeStr] = useState("08:00");
   const [selectedInstanceId, setSelectedInstanceId] = useState(null);
+  const [savingsModalType, setSavingsModalType] = useState(null); // 'total', 'rate', or null
   const [calendarBaseMonth, setCalendarBaseMonth] = useState(new Date());
   const [schedType, setSchedType] = useState("ONCE"); // "ONCE", "DAILY", "WEEKLY"
   const [selectedDays, setSelectedDays] = useState({
@@ -645,12 +648,26 @@ export default function App() {
     const scheduledInstances = instances.filter(i => i.schedules && i.schedules.length > 0).length;
     const activeOverrides = instances.filter(i => i.override).length;
 
+    const totalDollarsSaved = instances.reduce((acc, i) => acc + (i.total_dollars_saved || 0), 0);
+    const totalHoursSaved = instances.reduce((acc, i) => acc + (i.total_hours_saved || 0), 0);
+    const activeSavingsRate = instances
+      .filter(i => i.status === "stopped")
+      .reduce((acc, i) => {
+        const rate = i.custom_cost_per_hour !== null && i.custom_cost_per_hour !== undefined 
+          ? i.custom_cost_per_hour 
+          : (i.cost_per_hour || 0);
+        return acc + rate;
+      }, 0);
+
     return {
       totalInstances,
       runningInstances,
       sleepingInstances,
       scheduledInstances,
-      activeOverrides
+      activeOverrides,
+      totalDollarsSaved,
+      totalHoursSaved,
+      activeSavingsRate
     };
   };
 
@@ -755,8 +772,19 @@ export default function App() {
                 {inst.type === "ec2" ? <Server className="h-3 w-3" /> : <Database className="h-3 w-3" />}
                 {inst.type.toUpperCase()}
               </span>
-              <h2 className="text-2xl font-bold text-slate-850">{inst.name}</h2>
-              <p className="text-brand-slate text-xs font-mono mt-1">{inst.id} • {inst.region}</p>
+              <h2 className="text-2xl font-bold text-slate-800">{inst.name}</h2>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className="bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-0.5 rounded text-[10px] font-mono font-bold select-all">
+                  {inst.instance_type}
+                </span>
+                <span className="text-slate-500 text-xs font-semibold">
+                  • ${(inst.custom_cost_per_hour !== null && inst.custom_cost_per_hour !== undefined ? inst.custom_cost_per_hour : inst.cost_per_hour || 0.05).toFixed(4)}/hr
+                </span>
+                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-md shrink-0 select-none">
+                  Saved: ${(inst.total_dollars_saved || 0).toFixed(2)}
+                </span>
+              </div>
+              <p className="text-brand-slate text-xs font-mono mt-2">{inst.id} • {inst.region}</p>
             </div>
             
             <div className="flex flex-col items-end">
@@ -1262,7 +1290,50 @@ export default function App() {
 
         {/* Tab content rendering */}
         {activeTab === "dashboard" && (
-          <div className="space-y-8">
+          <div className="space-y-6">
+            {/* Cost Savings Dashboard */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="glass-panel p-6 rounded-2xl border-l-4 border-emerald-500 relative overflow-hidden bg-gradient-to-r from-emerald-500/5 to-transparent">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="p-3 bg-emerald-500/10 rounded-xl text-emerald-600">
+                    <DollarSign className="h-6 w-6" />
+                  </span>
+                  <div className="flex items-center gap-1.5 select-none">
+                    <span className="text-xs font-mono text-emerald-600 font-bold">TOTAL SAVINGS</span>
+                    <button
+                      onClick={() => setSavingsModalType("total")}
+                      className="text-emerald-600/70 hover:text-emerald-600 transition"
+                      title="Learn how Total Savings is calculated"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <h3 className="text-4xl font-extrabold text-slate-800">${metrics.totalDollarsSaved.toFixed(2)}</h3>
+                <p className="text-slate-500 text-sm mt-1">Accumulated savings across {metrics.totalHoursSaved.toFixed(1)} sleeping hours</p>
+              </div>
+
+              <div className="glass-panel p-6 rounded-2xl border-l-4 border-brand-teal relative overflow-hidden bg-gradient-to-r from-brand-teal/5 to-transparent">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="p-3 bg-brand-teal/10 rounded-xl text-brand-teal">
+                    <TrendingUp className="h-6 w-6" />
+                  </span>
+                  <div className="flex items-center gap-1.5 select-none">
+                    <span className="text-xs font-mono text-brand-teal font-bold">SAVINGS RATE</span>
+                    <button
+                      onClick={() => setSavingsModalType("rate")}
+                      className="text-brand-teal/70 hover:text-brand-teal transition"
+                      title="Learn how Savings Rate is calculated"
+                    >
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <h3 className="text-4xl font-extrabold text-slate-800">${metrics.activeSavingsRate.toFixed(2)} <span className="text-lg font-normal text-slate-500">/ hr</span></h3>
+                <p className="text-slate-500 text-sm mt-1">Real-time savings from currently stopped instances</p>
+              </div>
+            </div>
+
             {/* Metrics cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="glass-panel p-6 rounded-2xl">
@@ -1496,18 +1567,34 @@ export default function App() {
                             </div>
 
                             <h4 className="font-bold text-slate-800 text-lg truncate mb-1" title={inst.name}>{inst.name}</h4>
-                            <p className="text-brand-slate text-xs font-mono mb-4 truncate">{inst.id}</p>
+                            
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300 px-2 py-0.5 rounded text-[10px] font-mono font-bold select-all shrink-0">
+                                {inst.instance_type}
+                              </span>
+                              <p className="text-slate-500 text-xs font-semibold select-all shrink-0">
+                                ${(inst.custom_cost_per_hour !== null && inst.custom_cost_per_hour !== undefined ? inst.custom_cost_per_hour : inst.cost_per_hour || 0.05).toFixed(4)}/hr
+                              </p>
+                            </div>
 
-                            {/* Status badge */}
-                            <div className="flex items-center gap-2 mb-4">
-                              <span className={`h-2.5 w-2.5 rounded-full ${
-                                inst.status === "running" ? "bg-emerald-500 shadow-md shadow-emerald-500/50" :
-                                inst.status === "stopped" ? "bg-zinc-600" : "bg-yellow-500 animate-pulse"
-                              }`}></span>
-                              <span className={`text-sm font-semibold capitalize ${
-                                inst.status === "running" ? "text-emerald-400" :
-                                inst.status === "stopped" ? "text-slate-500" : "text-yellow-400"
-                              }`}>{inst.status}</span>
+                            <p className="text-brand-slate text-xs font-mono mb-3 truncate">{inst.id}</p>
+
+                            {/* Status badge and savings */}
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2">
+                                <span className={`h-2.5 w-2.5 rounded-full ${
+                                  inst.status === "running" ? "bg-emerald-500 shadow-md shadow-emerald-500/50" :
+                                  inst.status === "stopped" ? "bg-zinc-600" : "bg-yellow-500 animate-pulse"
+                                }`}></span>
+                                <span className={`text-sm font-semibold capitalize ${
+                                  inst.status === "running" ? "text-emerald-400" :
+                                  inst.status === "stopped" ? "text-slate-500" : "text-yellow-400"
+                                }`}>{inst.status}</span>
+                              </div>
+                              
+                              <span className="text-[11px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-md shrink-0 select-none">
+                                Saved: ${(inst.total_dollars_saved || 0).toFixed(2)}
+                              </span>
                             </div>
                           </div>
 
@@ -1675,6 +1762,67 @@ export default function App() {
           </div>
         )}
         {renderHelpModal()}
+
+        {/* Savings Info Modal */}
+        {savingsModalType && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white border border-brand-soft/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 modal-box">
+              <div className="flex justify-between items-center pb-2 border-b border-brand-soft/20">
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <Info className="h-5 w-5 text-brand-teal" />
+                  {savingsModalType === "total" ? "About Total Savings" : "About Savings Rate"}
+                </h3>
+                <button 
+                  onClick={() => setSavingsModalType(null)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {savingsModalType === "total" ? (
+                <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
+                  <p>
+                    <strong>Total Savings</strong> is the cumulative sum of money saved since the resource was added.
+                  </p>
+                  <p>
+                    Every minute, the background scheduler checks if a resource is asleep (stopped). If so, it increments the saved duration and calculates the corresponding value:
+                  </p>
+                  <div className="bg-slate-50 p-3 rounded-xl font-mono text-xs text-brand-teal border border-brand-soft/20">
+                    Savings += (1 / 60) * Hourly Cost Rate
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Note: When a resource is turned back on, the accumulated savings remain preserved so you don't lose track of historical optimization.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
+                  <p>
+                    <strong>Savings Rate</strong> represents your active hourly savings in real-time.
+                  </p>
+                  <p>
+                    It calculates how much less money you are burning per hour right now, based on the sum of hourly costs of all resources currently sleeping:
+                  </p>
+                  <div className="bg-slate-50 p-3 rounded-xl font-mono text-xs text-brand-teal border border-brand-soft/20">
+                    Rate = Sum of Sleeping Resource Rates
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Note: As resources wake up or schedules change, the Savings Rate updates dynamically in real-time.
+                  </p>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => setSavingsModalType(null)}
+                  className="bg-brand-teal hover:bg-brand-teal/90 text-white px-5 py-2 rounded-xl text-xs font-semibold transition"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

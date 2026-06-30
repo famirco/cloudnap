@@ -20,6 +20,9 @@ An open-source, self-hosted AWS Instance Scheduler designed to run inside a sing
 12. **Mock Mode for Testing**: Run locally without any AWS credentials or active AWS resources by enabling `MOCK_AWS=true`.
 13. **Slack & Telegram Integrations**: Real-time notifications dispatched to Slack incoming webhooks and Telegram Bot APIs on scheduling creations, override adjustments, and automated system state corrections. Features a dedicated sidebar **Settings** panel supporting active toggles, optional Slack channel overrides, and instant connection test message buttons.
 14. **Resource Lease Expiry (TTL)**: Assign temporary leases to developers or teams by specifying a precise UTC lease expiration date and time. Once expired, the scheduler automatically stops the resource, locks it in a stopped state, and broadcasts alert notifications to Slack/Telegram.
+15. **Cost Savings Dashboard & Analytics**: Live cost management dashboard tracking accumulated dollar savings and real-time hourly savings rate. Features an interactive information popup explaining the underlying math and formulas.
+16. **Free AWS Pricing API Integration**: Automatically queries the official, free-of-charge AWS Price List Service API (`pricing`) to fetch exact hourly costs for active EC2 and RDS sizes based on region, with local in-memory caching and offline fallback cost tables.
+17. **Dark & Light Themes**: Premium Dark mode styled with a high-end Dark Slate-Blue and Glowing Teal aesthetic, toggled from the bottom of the sidebar with persistent preference saving.
 
 ---
 
@@ -117,7 +120,8 @@ If deploying to AWS (with `MOCK_AWS=false`), the IAM role running the container 
         "ec2:DescribeRegions",
         "rds:DescribeDBInstances",
         "rds:StartDBInstance",
-        "rds:StopDBInstance"
+        "rds:StopDBInstance",
+        "pricing:GetProducts"
       ],
       "Resource": "*"
     }

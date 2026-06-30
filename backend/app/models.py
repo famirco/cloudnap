@@ -15,6 +15,10 @@ class Resource(Base):
     # Custom savings calculation override
     custom_cost_per_hour = Column(Float, nullable=True)
     
+    # Savings metrics
+    total_hours_saved = Column(Float, default=0.0, nullable=False)
+    total_dollars_saved = Column(Float, default=0.0, nullable=False)
+    
     last_scanned_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     expiry_date = Column(DateTime, nullable=True) # Lease Expiry Date/Time (UTC)
 
