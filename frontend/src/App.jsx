@@ -692,7 +692,7 @@ export default function App() {
         <div className="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-teal via-brand-slate to-brand-soft"></div>
           <div className="flex flex-col items-center mb-8">
-            <span className="text-5xl mb-3">😴</span>
+            <img src="/favicon.svg" alt="CloudNap Logo" className="h-16 w-16 mb-4 rounded-2xl shadow-lg shadow-brand-teal/20" />
             <h1 className="text-3xl font-bold tracking-tight text-brand-teal">CloudNap</h1>
             <p className="text-slate-500 text-sm mt-1">AWS Instance Scheduler</p>
           </div>
