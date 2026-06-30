@@ -1,4 +1,4 @@
-# CloudNap 😴
+# CloudNap
 
 An open-source, self-hosted AWS Instance Scheduler designed to run inside a single Docker container using Docker Compose. CloudNap helps you automatically schedule the shutdown and startup of AWS resources (EC2 and RDS) to optimize operations and cloud resource runtime.
 
