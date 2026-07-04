@@ -95,6 +95,24 @@ The easiest way to run CloudNap locally or in production is using Docker Compose
 
 ---
 
+## 🧪 Running Tests
+
+You can execute the automated test suite inside the running Docker container:
+
+```bash
+docker compose exec cloudnap pip install pytest
+docker compose exec cloudnap python -m pytest backend/tests -v
+```
+
+Or run them locally on your host machine:
+
+```bash
+cd backend
+python3 -m pytest tests -v
+```
+
+---
+
 ## 🤝 Contributing
 
 We love contributions! You can easily develop and test CloudNap locally without having an AWS account by utilizing the Mock AWS Mode.
