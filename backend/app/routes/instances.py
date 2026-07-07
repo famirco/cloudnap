@@ -74,8 +74,7 @@ def get_instances(db: Session = Depends(get_db)):
                 db_res.region = item["region"]
                 db_res.aws_account_id = item.get("aws_account_id")
         
-        # Delete DB resources that are no longer present in AWS active scan
-        db.query(Resource).filter(~Resource.id.in_(live_ids)).delete(synchronize_session=False)
+        # Do not delete DB resources if they are missing in the live scan (prevent data/schedule loss).
         db.commit()
         
         # 3. Retrieve all resources from DB with eager loaded relationships
@@ -87,19 +86,24 @@ def get_instances(db: Session = Depends(get_db)):
         
         for res in db_resources:
             aws_info = live_map.get(res.id)
-            if not aws_info:
-                continue
-                
+            
             # Serialize model
             res_schema = ResourceOut.model_validate(res)
             
-            # Inject live AWS states
-            res_schema.status = aws_info["status"]
-            res_schema.instance_type = aws_info["instance_type"]
-            res_schema.tags = aws_info["tags"]
-            # Cost per hour can be customized in DB, else use default AWS type mapping
-            res_schema.cost_per_hour = res.custom_cost_per_hour if res.custom_cost_per_hour is not None else aws_info["cost_per_hour"]
-            
+            if aws_info:
+                # Inject live AWS states
+                res_schema.status = aws_info["status"]
+                res_schema.instance_type = aws_info["instance_type"]
+                res_schema.tags = aws_info["tags"]
+                # Cost per hour can be customized in DB, else use default AWS type mapping
+                res_schema.cost_per_hour = res.custom_cost_per_hour if res.custom_cost_per_hour is not None else aws_info["cost_per_hour"]
+            else:
+                # Offline / terminated / missing credentials
+                res_schema.status = "offline"
+                res_schema.instance_type = "unknown"
+                res_schema.tags = {}
+                res_schema.cost_per_hour = res.custom_cost_per_hour if res.custom_cost_per_hour is not None else 0.05
+                
             results.append(res_schema)
             
         return results

@@ -1735,11 +1735,13 @@ export default function App() {
                               <div className="flex items-center gap-2">
                                 <span className={`h-2.5 w-2.5 rounded-full ${
                                   inst.status === "running" ? "bg-emerald-500 shadow-md shadow-emerald-500/50" :
-                                  inst.status === "stopped" ? "bg-zinc-600" : "bg-yellow-500 animate-pulse"
+                                  inst.status === "stopped" ? "bg-zinc-600" :
+                                  inst.status === "offline" ? "bg-rose-500 shadow-md shadow-rose-500/50 animate-pulse" : "bg-yellow-500 animate-pulse"
                                 }`}></span>
                                 <span className={`text-sm font-semibold capitalize ${
                                   inst.status === "running" ? "text-emerald-400" :
-                                  inst.status === "stopped" ? "text-slate-500" : "text-yellow-400"
+                                  inst.status === "stopped" ? "text-slate-500" :
+                                  inst.status === "offline" ? "text-rose-400 font-bold" : "text-yellow-400"
                                 }`}>{inst.status}</span>
                               </div>
                               
