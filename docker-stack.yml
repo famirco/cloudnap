@@ -14,7 +14,8 @@ services:
       - APP_PASSWORD=secret123
       - DATABASE_URL=sqlite:////app/data/cloudnap.db
     volumes:
-      - cloudnap-data:/app/data
+      # Mounts to a persistent host directory to ensure data isn't lost on stack removal
+      - /opt/cloudnap/data:/app/data
     deploy:
       replicas: 1
       restart_policy:
@@ -25,6 +26,3 @@ services:
       placement:
         constraints:
           - node.role == manager
-
-volumes:
-  cloudnap-data:

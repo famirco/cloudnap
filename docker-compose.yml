@@ -15,8 +15,5 @@ services:
       - APP_PASSWORD=secret123
       - DATABASE_URL=sqlite:////app/data/cloudnap.db
     volumes:
-      - cloudnap-data:/app/data
+      - ./data:/app/data
     restart: unless-stopped
-
-volumes:
-  cloudnap-data:
