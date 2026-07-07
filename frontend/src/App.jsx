@@ -100,8 +100,11 @@ export default function App() {
   // Lease expiry states
   const [newExpiryDateStr, setNewExpiryDateStr] = useState("");
   const [newExpiryTimeStr, setNewExpiryTimeStr] = useState("18:00");
+  const [expirySaving, setExpirySaving] = useState(false);
 
   const handleSetExpiry = async (instanceId, instanceName) => {
+    if (expirySaving) return;
+
     let payloadDate = null;
     if (newExpiryDateStr) {
       const parsed = parseDateString(newExpiryDateStr);
@@ -118,12 +121,15 @@ export default function App() {
       }
     }
 
+    setExpirySaving(true);
     try {
       await api.instances.setExpiry(instanceId, payloadDate);
       alert(payloadDate ? "Lease expiry set successfully!" : "Lease expiry cleared!");
       fetchData(); // reload
     } catch (err) {
       alert(`Failed to set lease expiry: ${err.message}`);
+    } finally {
+      setExpirySaving(false);
     }
   };
 
@@ -1138,20 +1144,30 @@ export default function App() {
                 <div className="flex gap-3 pt-1">
                   <button
                     type="button"
+                    disabled={expirySaving}
                     onClick={() => handleSetExpiry(inst.id, inst.name)}
-                    className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white py-2.5 rounded-xl text-xs font-semibold transition"
+                    className="flex-1 bg-brand-teal hover:bg-brand-teal/90 text-white py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Set Expiry Date
+                    {expirySaving ? "Saving..." : "Set Expiry Date"}
                   </button>
                   {inst.expiry_date && (
                     <button
                       type="button"
+                      disabled={expirySaving}
                       onClick={async () => {
+                        if (expirySaving) return;
                         setNewExpiryDateStr("");
-                        await api.instances.setExpiry(inst.id, null);
-                        fetchData();
+                        setExpirySaving(true);
+                        try {
+                          await api.instances.setExpiry(inst.id, null);
+                          fetchData();
+                        } catch (err) {
+                          alert(`Failed to clear lease: ${err.message}`);
+                        } finally {
+                          setExpirySaving(false);
+                        }
                       }}
-                      className="px-4 border border-red-500 text-red-500 hover:bg-red-50 py-2.5 rounded-xl text-xs font-semibold transition"
+                      className="px-4 border border-red-500 text-red-500 hover:bg-red-50 py-2.5 rounded-xl text-xs font-semibold transition disabled:opacity-50"
                     >
                       Clear Lease
                     </button>
