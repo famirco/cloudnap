@@ -1,7 +1,54 @@
 import boto3
 from botocore.exceptions import ClientError
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from backend.app.config import settings
+from backend.app.crypto import decrypt_value
+
+def get_aws_session(account: Any = None) -> boto3.Session:
+    """
+    Constructs a boto3 Session for a given AWSAccount DB object.
+    If no account is provided, returns the default session.
+    """
+    if not account:
+        return boto3.Session()
+
+    if account.role_arn:
+        # Cross-Account AssumeRole using STS
+        sts_client = boto3.client("sts")
+        assume_role_kwargs = {
+            "RoleArn": account.role_arn,
+            "RoleSessionName": "CloudNapSession",
+        }
+        if account.external_id:
+            assume_role_kwargs["ExternalId"] = account.external_id
+            
+        try:
+            assumed_role_object = sts_client.assume_role(**assume_role_kwargs)
+            credentials = assumed_role_object["Credentials"]
+            return boto3.Session(
+                aws_access_key_id=credentials["AccessKeyId"],
+                aws_secret_access_key=credentials["SecretAccessKey"],
+                aws_session_token=credentials["SessionToken"],
+            )
+        except Exception as e:
+            print(f"Error assuming role {account.role_arn}: {e}")
+            raise e
+
+    elif account.access_key_id and account.secret_access_key:
+        # Static credentials decrypted at rest
+        decrypted_access_key = decrypt_value(account.access_key_id)
+        decrypted_secret_key = decrypt_value(account.secret_access_key)
+        return boto3.Session(
+            aws_access_key_id=decrypted_access_key,
+            aws_secret_access_key=decrypted_secret_key,
+        )
+
+    return boto3.Session()
+
+def get_aws_client(service_name: str, region_name: str, account: Any = None):
+    session = get_aws_session(account)
+    return session.client(service_name, region_name=region_name)
+
 
 # In-memory mock data to allow local offline development and testing
 MOCK_RESOURCES: Dict[str, Dict[str, Any]] = {
@@ -54,6 +101,76 @@ MOCK_RESOURCES: Dict[str, Dict[str, Any]] = {
         "region": "us-west-2",
         "cost_per_hour": 0.017,
         "tags": {}
+    },
+    "i-03333333333333333": {
+        "id": "i-03333333333333333",
+        "name": "staging-worker-1",
+        "type": "ec2",
+        "instance_type": "t3.micro",
+        "status": "running",
+        "region": "us-east-1",
+        "cost_per_hour": 0.0104,
+        "tags": {"Name": "staging-worker-1"}
+    },
+    "i-04444444444444444": {
+        "id": "i-04444444444444444",
+        "name": "staging-worker-2",
+        "type": "ec2",
+        "instance_type": "t3.micro",
+        "status": "stopped",
+        "region": "us-east-1",
+        "cost_per_hour": 0.0104,
+        "tags": {"Name": "staging-worker-2"}
+    },
+    "db-staging-replica": {
+        "id": "db-staging-replica",
+        "name": "db-staging-replica",
+        "type": "rds",
+        "instance_type": "db.t3.micro",
+        "status": "running",
+        "region": "us-east-1",
+        "cost_per_hour": 0.017,
+        "tags": {}
+    },
+    "i-05555555555555555": {
+        "id": "i-05555555555555555",
+        "name": "prod-web-server-1",
+        "type": "ec2",
+        "instance_type": "t3.medium",
+        "status": "running",
+        "region": "us-west-2",
+        "cost_per_hour": 0.0416,
+        "tags": {"Name": "prod-web-server-1"}
+    },
+    "i-06666666666666666": {
+        "id": "i-06666666666666666",
+        "name": "prod-web-server-2",
+        "type": "ec2",
+        "instance_type": "t3.medium",
+        "status": "running",
+        "region": "us-west-2",
+        "cost_per_hour": 0.0416,
+        "tags": {"Name": "prod-web-server-2"}
+    },
+    "i-07777777777777777": {
+        "id": "i-07777777777777777",
+        "name": "prod-payment-service",
+        "type": "ec2",
+        "instance_type": "t3.small",
+        "status": "stopped",
+        "region": "us-west-2",
+        "cost_per_hour": 0.0208,
+        "tags": {"Name": "prod-payment-service"}
+    },
+    "db-prod-main": {
+        "id": "db-prod-main",
+        "name": "db-prod-main",
+        "type": "rds",
+        "instance_type": "db.t3.medium",
+        "status": "running",
+        "region": "us-west-2",
+        "cost_per_hour": 0.068,
+        "tags": {}
     }
 }
 
@@ -97,7 +214,7 @@ REGION_TO_LOCATION = {
 
 PRICING_CACHE = {}
 
-def get_live_aws_price(service_code: str, instance_type: str, region_code: str) -> float:
+def get_live_aws_price(service_code: str, instance_type: str, region_code: str, account: Any = None) -> float:
     """
     Fetch exact hourly cost of an EC2/RDS instance from AWS Pricing API.
     Caches results in memory to avoid repetitive API requests.
@@ -117,7 +234,7 @@ def get_live_aws_price(service_code: str, instance_type: str, region_code: str) 
     
     try:
         # The Pricing API endpoint must be queried in us-east-1 or ap-south-1
-        client = boto3.client('pricing', region_name='us-east-1')
+        client = get_aws_client('pricing', region_name='us-east-1', account=account)
         
         filters = [
             {"Field": "instanceType", "Value": instance_type, "Type": "TERM_MATCH"},
@@ -189,12 +306,36 @@ def get_ec2_cost(instance_type: str) -> float:
 def get_rds_cost(db_class: str) -> float:
     return RDS_COSTS.get(db_class, 0.10)
 
-def list_resources() -> List[Dict[str, Any]]:
+def list_resources(account: Any = None) -> List[Dict[str, Any]]:
     """
     Scan EC2 and RDS instances across target regions and return uniform representation.
     """
     if settings.MOCK_AWS:
-        return list(MOCK_RESOURCES.values())
+        results = []
+        for key, res in MOCK_RESOURCES.items():
+            res_copy = res.copy()
+            if account:
+                res_copy["aws_account_name"] = account.name
+                # Map specific resources based on account ID to prevent duplicates
+                if account.id == 1:
+                    if res["id"] in [
+                        "i-0123456789abcdef0", "i-0abcdef1234567890", "db-dev-postgres",
+                        "i-03333333333333333", "i-04444444444444444", "db-staging-replica"
+                    ]:
+                        results.append(res_copy)
+                elif account.id == 2:
+                    if res["id"] in [
+                        "i-0987654321fedcba0", "db-staging-mysql", "i-05555555555555555",
+                        "i-06666666666666666", "i-07777777777777777", "db-prod-main"
+                    ]:
+                        results.append(res_copy)
+                else:
+                    # Other mock accounts get empty list to avoid duplicates
+                    pass
+            else:
+                res_copy["aws_account_name"] = "Default Host"
+                results.append(res_copy)
+        return results
     
     resources = []
     regions = get_regions()
@@ -202,7 +343,7 @@ def list_resources() -> List[Dict[str, Any]]:
     for region in regions:
         # 1. EC2 Scan
         try:
-            ec2 = boto3.client("ec2", region_name=region)
+            ec2 = get_aws_client("ec2", region_name=region, account=account)
             paginator = ec2.get_paginator("describe_instances")
             for page in paginator.paginate():
                 for reservation in page.get("Reservations", []):
@@ -227,15 +368,15 @@ def list_resources() -> List[Dict[str, Any]]:
                             "instance_type": instance_type,
                             "status": normalized_status,
                             "region": region,
-                            "cost_per_hour": get_live_aws_price("AmazonEC2", instance_type, region),
+                            "cost_per_hour": get_live_aws_price("AmazonEC2", instance_type, region, account=account),
                             "tags": tags
                         })
         except ClientError as e:
-            print(f"Error scanning EC2 in region {region}: {e}")
+            print(f"Error scanning EC2 in region {region} for account {account.name if account else 'default'}: {e}")
             
         # 2. RDS Scan
         try:
-            rds = boto3.client("rds", region_name=region)
+            rds = get_aws_client("rds", region_name=region, account=account)
             paginator = rds.get_paginator("describe_db_instances")
             for page in paginator.paginate():
                 for db_instance in page.get("DBInstances", []):
@@ -255,9 +396,6 @@ def list_resources() -> List[Dict[str, Any]]:
                     else:
                         normalized_status = "running" # Default other active states as running
                     
-                    # RDS tags can be retrieved or described.
-                    # Boto3 describe_db_instances does not always return tags directly depending on version, 
-                    # so we read them from TagList list if present.
                     tags = {t["Key"]: t["Value"] for t in db_instance.get("TagList", [])}
                     db_class = db_instance["DBInstanceClass"]
                     
@@ -268,15 +406,15 @@ def list_resources() -> List[Dict[str, Any]]:
                         "instance_type": db_class,
                         "status": normalized_status,
                         "region": region,
-                        "cost_per_hour": get_live_aws_price("AmazonRDS", db_class, region),
+                        "cost_per_hour": get_live_aws_price("AmazonRDS", db_class, region, account=account),
                         "tags": tags
                     })
         except ClientError as e:
-            print(f"Error scanning RDS in region {region}: {e}")
+            print(f"Error scanning RDS in region {region} for account {account.name if account else 'default'}: {e}")
             
     return resources
 
-def start_resource(resource_id: str, resource_type: str, region: str) -> bool:
+def start_resource(resource_id: str, resource_type: str, region: str, account: Any = None) -> bool:
     """
     Start the specified EC2 or RDS resource. Returns True if command succeeded.
     """
@@ -288,19 +426,19 @@ def start_resource(resource_id: str, resource_type: str, region: str) -> bool:
 
     try:
         if resource_type == "ec2":
-            ec2 = boto3.client("ec2", region_name=region)
+            ec2 = get_aws_client("ec2", region_name=region, account=account)
             ec2.start_instances(InstanceIds=[resource_id])
             return True
         elif resource_type == "rds":
-            rds = boto3.client("rds", region_name=region)
+            rds = get_aws_client("rds", region_name=region, account=account)
             rds.start_db_instance(DBInstanceIdentifier=resource_id)
             return True
     except ClientError as e:
-        print(f"Failed to start {resource_type} instance {resource_id} in {region}: {e}")
+        print(f"Failed to start {resource_type} instance {resource_id} in {region} for account {account.name if account else 'default'}: {e}")
         return False
     return False
 
-def stop_resource(resource_id: str, resource_type: str, region: str) -> bool:
+def stop_resource(resource_id: str, resource_type: str, region: str, account: Any = None) -> bool:
     """
     Stop the specified EC2 or RDS resource. Returns True if command succeeded.
     """
@@ -312,14 +450,14 @@ def stop_resource(resource_id: str, resource_type: str, region: str) -> bool:
 
     try:
         if resource_type == "ec2":
-            ec2 = boto3.client("ec2", region_name=region)
+            ec2 = get_aws_client("ec2", region_name=region, account=account)
             ec2.stop_instances(InstanceIds=[resource_id])
             return True
         elif resource_type == "rds":
-            rds = boto3.client("rds", region_name=region)
+            rds = get_aws_client("rds", region_name=region, account=account)
             rds.stop_db_instance(DBInstanceIdentifier=resource_id)
             return True
     except ClientError as e:
-        print(f"Failed to stop {resource_type} instance {resource_id} in {region}: {e}")
+        print(f"Failed to stop {resource_type} instance {resource_id} in {region} for account {account.name if account else 'default'}: {e}")
         return False
     return False

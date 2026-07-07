@@ -44,6 +44,32 @@ class ResourceBase(BaseModel):
     region: str
     custom_cost_per_hour: Optional[float] = None
 
+class AWSAccountBrief(BaseModel):
+    id: int
+    name: str
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AWSAccountCreate(BaseModel):
+    name: str
+    role_arn: Optional[str] = None
+    access_key_id: Optional[str] = None
+    secret_access_key: Optional[str] = None
+    external_id: Optional[str] = None
+    is_active: bool = True
+
+
+class AWSAccountOut(BaseModel):
+    id: int
+    name: str
+    role_arn: Optional[str] = None
+    access_key_id: Optional[str] = None # Return masked or empty
+    external_id: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ResourceOut(ResourceBase):
     last_scanned_at: datetime
     expiry_date: Optional[datetime] = None
@@ -51,6 +77,7 @@ class ResourceOut(ResourceBase):
     total_dollars_saved: float = 0.0
     schedules: List[ResourceScheduleOut] = []
     override: Optional[ResourceOverrideOut] = None
+    aws_account: Optional[AWSAccountBrief] = None
     
     # Dynamic fields populated at runtime (fetched from AWS API / aws.py)
     status: Optional[str] = None 

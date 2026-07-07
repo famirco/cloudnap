@@ -3,6 +3,22 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from backend.app.db import Base
 
+class AWSAccount(Base):
+    __tablename__ = "aws_accounts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    role_arn = Column(String, nullable=True)
+    access_key_id = Column(String, nullable=True)
+    secret_access_key = Column(String, nullable=True)
+    external_id = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    resources = relationship("Resource", back_populates="aws_account")
+
+
 class Resource(Base):
     __tablename__ = "resources"
 
@@ -11,6 +27,9 @@ class Resource(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)       # "ec2", "rds", or "ecs"
     region = Column(String, nullable=False)
+    
+    # Linked AWS Account
+    aws_account_id = Column(Integer, ForeignKey("aws_accounts.id", ondelete="SET NULL"), nullable=True)
     
     # Custom savings calculation override
     custom_cost_per_hour = Column(Float, nullable=True)
@@ -23,6 +42,7 @@ class Resource(Base):
     expiry_date = Column(DateTime, nullable=True) # Lease Expiry Date/Time (UTC)
 
     # Relationships
+    aws_account = relationship("AWSAccount", back_populates="resources")
     # A resource can have multiple scheduled active windows (one-to-many)
     schedules = relationship("ResourceSchedule", back_populates="resource", cascade="all, delete-orphan")
     # A resource can have at most one active override, so it's a 1-to-1 mapping

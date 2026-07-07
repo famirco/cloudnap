@@ -109,6 +109,17 @@ export const api = {
     setExpiry: (id, expiryDate) => request(`/instances/${id}/expiry`, {
       method: "POST",
       body: { expiry_date: expiryDate }
+    }),
+    listAccounts: () => request("/instances/accounts"),
+    saveAccount: (payload) => request("/instances/accounts", {
+      method: "POST",
+      body: payload
+    }),
+    deleteAccount: (id) => request(`/instances/accounts/${id}`, {
+      method: "DELETE"
+    }),
+    testAccountConnection: (id) => request(`/instances/accounts/${id}/test`, {
+      method: "POST"
     })
   }
 };

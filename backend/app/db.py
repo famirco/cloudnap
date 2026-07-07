@@ -32,7 +32,7 @@ def init_db():
     # 0. Migrate resources
     if "resources" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("resources")]
-        if "expiry_date" not in columns or "total_dollars_saved" not in columns:
+        if "expiry_date" not in columns or "total_dollars_saved" not in columns or "aws_account_id" not in columns:
             try:
                 from backend.app.models import Resource, ResourceSchedule, ResourceOverride
                 ResourceOverride.__table__.drop(bind=engine, checkfirst=True)
@@ -65,3 +65,20 @@ def init_db():
                 print(f"Failed to drop old resource_schedules table: {e}")
                 
     Base.metadata.create_all(bind=engine)
+    
+    # Seed default mock accounts if MOCK_AWS is active
+    if settings.MOCK_AWS:
+        db = SessionLocal()
+        try:
+            from backend.app.models import AWSAccount
+            if db.query(AWSAccount).count() == 0:
+                acc1 = AWSAccount(id=1, name="Mock Staging Account", role_arn="arn:aws:iam::111111111111:role/CloudNapStagingRole", is_active=True)
+                acc2 = AWSAccount(id=2, name="Mock Production Account", role_arn="arn:aws:iam::222222222222:role/CloudNapProductionRole", is_active=True)
+                db.add(acc1)
+                db.add(acc2)
+                db.commit()
+                print("Default mock accounts seeded successfully.")
+        except Exception as e:
+            print(f"Failed to seed mock accounts: {e}")
+        finally:
+            db.close()

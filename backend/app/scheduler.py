@@ -27,8 +27,24 @@ def check_resources_job():
     logger.info("Executing background state-based check_resources_job...")
     db = SessionLocal()
     try:
-        # 1. Fetch live status of all AWS resources
-        live_resources = list_resources()
+        # 1. Fetch live status of all AWS resources across all accounts
+        from backend.app.models import AWSAccount
+        accounts = db.query(AWSAccount).filter(AWSAccount.is_active == True).all()
+        
+        live_resources = []
+        # Scan default host
+        try:
+            live_resources.extend(list_resources(account=None))
+        except Exception as e:
+            logger.error(f"Error scanning resources for default host: {e}")
+            
+        # Scan each active registered account
+        for acc in accounts:
+            try:
+                live_resources.extend(list_resources(account=acc))
+            except Exception as e:
+                logger.error(f"Error scanning resources for account {acc.name}: {e}")
+
         live_status_map = {r["id"]: r["status"] for r in live_resources}
         live_cost_map = {r["id"]: r.get("cost_per_hour", 0.0) for r in live_resources}
         
@@ -115,7 +131,7 @@ def check_resources_job():
                 # Start if currently stopped (ignore starting/stopping transitions)
                 if current_status == "stopped":
                     logger.info(f"State evaluation - target is RUNNING: Starting resource {resource_id}")
-                    start_resource(resource_id, resource.type, resource.region)
+                    start_resource(resource_id, resource.type, resource.region, account=resource.aws_account)
                     sys_log = ActionLog(
                         resource_id=resource_id,
                         resource_name=resource.name,
@@ -129,7 +145,7 @@ def check_resources_job():
                 # Stop if currently running (ignore starting/stopping transitions)
                 if current_status == "running":
                     logger.info(f"State evaluation - target is STOPPED: Stopping resource {resource_id}")
-                    stop_resource(resource_id, resource.type, resource.region)
+                    stop_resource(resource_id, resource.type, resource.region, account=resource.aws_account)
                     
                     msg = f"System automatically stopped resource {resource.name} ({resource_id}) because it is inside sleep window."
                     if is_lease_expired:

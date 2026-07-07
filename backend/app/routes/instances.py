@@ -3,12 +3,14 @@ from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime, timezone
 
+from backend.app.config import settings
 from backend.app.db import get_db
-from backend.app.models import Resource, ResourceOverride, ResourceSchedule, ActionLog, Setting
-from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut, ActionLogOut, SettingItem, SettingsUpdate, IntegrationTestPayload, SetExpiryPayload
+from backend.app.models import Resource, ResourceOverride, ResourceSchedule, ActionLog, Setting, AWSAccount
+from backend.app.schemas import ResourceOut, ResourceOverrideCreate, ResourceOverrideOut, ResourceScheduleCreate, ResourceScheduleOut, ActionLogOut, SettingItem, SettingsUpdate, IntegrationTestPayload, SetExpiryPayload, AWSAccountCreate, AWSAccountOut
 from backend.app.notifier import send_notifications
-from backend.app.aws import list_resources, start_resource, stop_resource
+from backend.app.aws import list_resources, start_resource, stop_resource, get_aws_session
 from backend.app.routes.auth import verify_auth
+from backend.app.crypto import encrypt_value
 
 router = APIRouter(prefix="/instances", dependencies=[Depends(verify_auth)], tags=["Instances"])
 
@@ -19,8 +21,37 @@ def get_instances(db: Session = Depends(get_db)):
     and returns a merged list of resources containing both AWS live states and DB mappings.
     """
     try:
-        # 1. Fetch live resource states from AWS
-        live_list = list_resources()
+        # 1. Fetch live resource states from AWS across all active accounts
+        from backend.app.models import AWSAccount
+        accounts = db.query(AWSAccount).filter(AWSAccount.is_active == True).all()
+        
+        live_list = []
+        if settings.MOCK_AWS:
+            if accounts:
+                for acc in accounts:
+                    try:
+                        live_list.extend([dict(item, aws_account_id=acc.id) for item in list_resources(account=acc)])
+                    except Exception as e:
+                        print(f"Error scanning resources for account {acc.name}: {e}")
+            else:
+                try:
+                    live_list.extend([dict(item, aws_account_id=None) for item in list_resources(account=None)])
+                except Exception as e:
+                    print(f"Error scanning resources for default host: {e}")
+        else:
+            # Scan default host
+            try:
+                live_list.extend([dict(item, aws_account_id=None) for item in list_resources(account=None)])
+            except Exception as e:
+                print(f"Error scanning resources for default host: {e}")
+            
+            # Scan registered active accounts
+            for acc in accounts:
+                try:
+                    live_list.extend([dict(item, aws_account_id=acc.id) for item in list_resources(account=acc)])
+                except Exception as e:
+                    print(f"Error scanning resources for account {acc.name}: {e}")
+                
         live_ids = {item["id"] for item in live_list}
         
         # 2. Sync to DB
@@ -33,6 +64,7 @@ def get_instances(db: Session = Depends(get_db)):
                     name=item["name"],
                     type=item["type"],
                     region=item["region"],
+                    aws_account_id=item.get("aws_account_id"),
                     custom_cost_per_hour=None
                 )
                 db.add(db_res)
@@ -40,6 +72,7 @@ def get_instances(db: Session = Depends(get_db)):
                 db_res.name = item["name"]
                 db_res.type = item["type"]
                 db_res.region = item["region"]
+                db_res.aws_account_id = item.get("aws_account_id")
         
         # Delete DB resources that are no longer present in AWS active scan
         db.query(Resource).filter(~Resource.id.in_(live_ids)).delete(synchronize_session=False)
@@ -390,3 +423,92 @@ def set_instance_expiry(instance_id: str, payload: SetExpiryPayload, db: Session
     
     send_notifications(db, log_msg)
     return res
+
+
+@router.get("/accounts", response_model=List[AWSAccountOut])
+def get_accounts(db: Session = Depends(get_db)):
+    accounts = db.query(AWSAccount).all()
+    out_accounts = []
+    for acc in accounts:
+        out_accounts.append(AWSAccountOut(
+            id=acc.id,
+            name=acc.name,
+            role_arn=acc.role_arn,
+            access_key_id="********" if acc.access_key_id else None,
+            external_id=acc.external_id,
+            is_active=acc.is_active,
+            created_at=acc.created_at
+        ))
+    return out_accounts
+
+
+@router.post("/accounts", response_model=AWSAccountOut)
+def save_account(payload: AWSAccountCreate, db: Session = Depends(get_db)):
+    existing = db.query(AWSAccount).filter(AWSAccount.name == payload.name).first()
+    
+    encrypted_key_id = encrypt_value(payload.access_key_id) if payload.access_key_id and payload.access_key_id != "********" else None
+    encrypted_secret = encrypt_value(payload.secret_access_key) if payload.secret_access_key and payload.secret_access_key != "********" else None
+    
+    if existing:
+        existing.role_arn = payload.role_arn
+        if encrypted_key_id:
+            existing.access_key_id = encrypted_key_id
+        if encrypted_secret:
+            existing.secret_access_key = encrypted_secret
+        existing.external_id = payload.external_id
+        existing.is_active = payload.is_active
+        db.commit()
+        db.refresh(existing)
+        acc = existing
+    else:
+        acc = AWSAccount(
+            name=payload.name,
+            role_arn=payload.role_arn,
+            access_key_id=encrypted_key_id,
+            secret_access_key=encrypted_secret,
+            external_id=payload.external_id,
+            is_active=payload.is_active
+        )
+        db.add(acc)
+        db.commit()
+        db.refresh(acc)
+        
+    return AWSAccountOut(
+        id=acc.id,
+        name=acc.name,
+        role_arn=acc.role_arn,
+        access_key_id="********" if acc.access_key_id else None,
+        external_id=acc.external_id,
+        is_active=acc.is_active,
+        created_at=acc.created_at
+    )
+
+
+@router.delete("/accounts/{id}")
+def delete_account(id: int, db: Session = Depends(get_db)):
+    acc = db.query(AWSAccount).filter(AWSAccount.id == id).first()
+    if not acc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+    
+    db.query(Resource).filter(Resource.aws_account_id == id).delete(synchronize_session=False)
+    db.delete(acc)
+    db.commit()
+    return {"message": "Account deleted successfully"}
+
+
+@router.post("/accounts/{id}/test")
+def test_account_connection(id: int, db: Session = Depends(get_db)):
+    acc = db.query(AWSAccount).filter(AWSAccount.id == id).first()
+    if not acc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+        
+    if settings.MOCK_AWS:
+        return {"status": "success", "message": "Connection test passed (Mock Mode)"}
+        
+    try:
+        session = get_aws_session(acc)
+        sts = session.client("sts")
+        sts.get_caller_identity()
+        return {"status": "success", "message": "Connection test passed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
