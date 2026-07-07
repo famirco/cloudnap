@@ -431,6 +431,18 @@ def start_resource(resource_id: str, resource_type: str, region: str, account: A
             return True
         elif resource_type == "rds":
             rds = get_aws_client("rds", region_name=region, account=account)
+            try:
+                db_info = rds.describe_db_instances(DBInstanceIdentifier=resource_id)["DBInstances"][0]
+                cluster_id = db_info.get("DBClusterIdentifier")
+                if cluster_id:
+                    try:
+                        rds.start_db_cluster(DBClusterIdentifier=cluster_id)
+                    except ClientError as ce:
+                        if "InvalidDBClusterState" not in str(ce):
+                            raise ce
+                    return True
+            except Exception:
+                pass
             rds.start_db_instance(DBInstanceIdentifier=resource_id)
             return True
     except ClientError as e:
@@ -455,6 +467,18 @@ def stop_resource(resource_id: str, resource_type: str, region: str, account: An
             return True
         elif resource_type == "rds":
             rds = get_aws_client("rds", region_name=region, account=account)
+            try:
+                db_info = rds.describe_db_instances(DBInstanceIdentifier=resource_id)["DBInstances"][0]
+                cluster_id = db_info.get("DBClusterIdentifier")
+                if cluster_id:
+                    try:
+                        rds.stop_db_cluster(DBClusterIdentifier=cluster_id)
+                    except ClientError as ce:
+                        if "InvalidDBClusterState" not in str(ce):
+                            raise ce
+                    return True
+            except Exception:
+                pass
             rds.stop_db_instance(DBInstanceIdentifier=resource_id)
             return True
     except ClientError as e:
