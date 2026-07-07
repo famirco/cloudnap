@@ -37,9 +37,8 @@ def init_db():
     Automatically handles schema upgrades/migrations for resource_overrides and resource_schedules.
     """
     from sqlalchemy import inspect
-    inspector = inspect(engine)
-    
     # 0. Migrate resources
+    inspector = inspect(engine)
     if "resources" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("resources")]
         if "expiry_date" not in columns or "total_dollars_saved" not in columns or "aws_account_id" not in columns or "status" not in columns or "tags_json" not in columns:
@@ -53,6 +52,7 @@ def init_db():
                 print(f"Failed to drop old resources table: {e}")
 
     # 1. Migrate resource_overrides
+    inspector = inspect(engine)
     if "resource_overrides" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("resource_overrides")]
         if "expire_at" in columns:
@@ -64,6 +64,7 @@ def init_db():
                 print(f"Failed to drop old resource_overrides table: {e}")
                 
     # 2. Migrate resource_schedules
+    inspector = inspect(engine)
     if "resource_schedules" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("resource_schedules")]
         if "days" in columns or "start_day" in columns or "schedule_type" not in columns:
