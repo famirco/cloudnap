@@ -65,11 +65,11 @@ Managing AWS EC2 and RDS instances on a budget shouldn't require complex archite
 
 ```mermaid
 graph TD
-    User([Platform User]) <-->|React UI| FE[Vite Frontend]
-    FE <-->|REST API / Bearer Auth| BE[FastAPI Backend]
-    BE <-->|Read/Write Config & Schedules| DB[(SQLite Database)]
-    BE <-->|APScheduler Ticks (Every 1m)| SE[Self-Healing Engine]
-    SE <-->|Boto3 / pricing Client| AWS[AWS API - EC2 & RDS]
+    User([Platform User]) -->|React UI| FE[Vite Frontend]
+    FE -->|REST API / Bearer Auth| BE[FastAPI Backend]
+    BE -->|Read/Write Config & Schedules| DB[(SQLite Database)]
+    BE -->|"APScheduler Ticks (Every 1m)"| SE[Self-Healing Engine]
+    SE -->|Boto3 / pricing Client| AWS[AWS API - EC2 & RDS]
     SE -.->|Alerts| Slack[Slack Webhook]
     SE -.->|Alerts| Telegram[Telegram Bot API]
 ```
@@ -187,4 +187,41 @@ If deploying to AWS (with `MOCK_AWS=false`), the IAM role running the container 
   ]
 }
 ```
+
+---
+
+## 🌐 Multi-AWS Account Scaling
+
+CloudNap is designed to scale across multiple AWS Accounts from a single dashboard. You can add external accounts under the **AWS Accounts** tab using two methods:
+
+### 1. Cross-Account IAM Role Assumption (Recommended)
+This method allows CloudNap to securely manage resources in target accounts without storing long-lived access keys.
+
+To set this up:
+1. In the target account, create an IAM Role (e.g. `CloudNapCrossAccountRole`) with the [Required AWS IAM Permissions](#-required-aws-iam-permissions).
+2. Configure the role's **Trust Relationship** to trust the main account where CloudNap is running:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::MAIN_ACCOUNT_ID:root"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "YOUR_OPTIONAL_EXTERNAL_ID"
+        }
+      }
+    }
+  ]
+}
+```
+3. Add the role's ARN and external ID (if set) in CloudNap's dashboard.
+
+### 2. Static Access Keys
+Alternatively, you can connect accounts by providing standard AWS Access Keys. All credentials are **AES-256 Fernet encrypted at rest** in your SQLite database using either the `ENCRYPTION_KEY` environment variable or a stable key derived from your `APP_PASSWORD` fallback.
 
