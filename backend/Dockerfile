@@ -33,10 +33,10 @@ COPY backend/ /app/backend/
 COPY --from=frontend-builder /frontend/dist /app/frontend/dist
 
 # Expose Uvicorn default port
-EXPOSE 8000
+EXPOSE 8080
 
 # Set Python path to ensure module loading runs correctly
 ENV PYTHONPATH=/app
 
 # Start the application
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8080"]
