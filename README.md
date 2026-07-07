@@ -196,6 +196,8 @@ If deploying to AWS (with `MOCK_AWS=false`), the IAM role running the container 
         "rds:DescribeDBInstances",
         "rds:StartDBInstance",
         "rds:StopDBInstance",
+        "rds:StartDBCluster",
+        "rds:StopDBCluster",
         "pricing:GetProducts"
       ],
       "Resource": "*"
