@@ -337,10 +337,12 @@ def list_resources(account: Any = None) -> List[Dict[str, Any]]:
                 results.append(res_copy)
         return results
     
+    from concurrent.futures import ThreadPoolExecutor
     resources = []
     regions = get_regions()
     
-    for region in regions:
+    def scan_region(region: str) -> List[Dict[str, Any]]:
+        region_resources = []
         # 1. EC2 Scan
         try:
             ec2 = get_aws_client("ec2", region_name=region, account=account)
@@ -361,7 +363,7 @@ def list_resources(account: Any = None) -> List[Dict[str, Any]]:
                             continue # Ignore terminated instances
                         
                         instance_type = instance["InstanceType"]
-                        resources.append({
+                        region_resources.append({
                             "id": instance_id,
                             "name": name,
                             "type": "ec2",
@@ -399,7 +401,7 @@ def list_resources(account: Any = None) -> List[Dict[str, Any]]:
                     tags = {t["Key"]: t["Value"] for t in db_instance.get("TagList", [])}
                     db_class = db_instance["DBInstanceClass"]
                     
-                    resources.append({
+                    region_resources.append({
                         "id": db_id,
                         "name": db_id,
                         "type": "rds",
@@ -411,6 +413,14 @@ def list_resources(account: Any = None) -> List[Dict[str, Any]]:
                     })
         except ClientError as e:
             print(f"Error scanning RDS in region {region} for account {account.name if account else 'default'}: {e}")
+            
+        return region_resources
+
+    # Scan regions concurrently
+    with ThreadPoolExecutor(max_workers=min(len(regions), 16)) as executor:
+        futures_results = executor.map(scan_region, regions)
+        for r_list in futures_results:
+            resources.extend(r_list)
             
     return resources
 
