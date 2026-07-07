@@ -433,13 +433,13 @@ export default function App() {
     setPasswordInput("");
   };
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
     setLoading(true);
     setError("");
     const startTime = Date.now();
     try {
       const [instList, logList] = await Promise.all([
-        api.instances.list(),
+        api.instances.list(forceRefresh),
         api.instances.logs()
       ]);
       const elapsed = Date.now() - startTime;
@@ -862,7 +862,7 @@ export default function App() {
           
           <div className="flex gap-2">
             <button
-              onClick={fetchData}
+              onClick={() => fetchData(true)}
               disabled={loading}
               className="flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 border border-brand-soft/40 px-4 py-2.5 rounded-xl border border-brand-soft/40 transition"
             >
@@ -1403,7 +1403,7 @@ export default function App() {
             </div>
 
             <button
-              onClick={fetchData}
+              onClick={() => fetchData(true)}
               disabled={loading}
               className="flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 disabled:opacity-50 text-slate-800 border border-brand-soft/40 px-4 py-2.5 rounded-xl border border-brand-soft/40 transition shrink-0"
             >

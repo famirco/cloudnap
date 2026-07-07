@@ -81,7 +81,7 @@ export const api = {
   },
   
   instances: {
-    list: () => request("/instances"),
+    list: (refresh = false) => request("/instances" + (refresh ? "?refresh=true" : "")),
     logs: () => request("/instances/logs"),
     addSchedule: (id, payload) => request(`/instances/${id}/schedules`, {
       method: "POST",

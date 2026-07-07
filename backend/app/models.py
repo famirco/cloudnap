@@ -27,6 +27,10 @@ class Resource(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)       # "ec2", "rds", or "ecs"
     region = Column(String, nullable=False)
+    status = Column(String, default="unknown", nullable=False)
+    instance_type = Column(String, default="unknown", nullable=False)
+    tags_json = Column(String, default="{}", nullable=False)
+    cost_per_hour = Column(Float, default=0.05, nullable=False)
     
     # Linked AWS Account
     aws_account_id = Column(Integer, ForeignKey("aws_accounts.id", ondelete="SET NULL"), nullable=True)

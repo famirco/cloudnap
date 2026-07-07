@@ -15,95 +15,97 @@ from backend.app.crypto import encrypt_value
 router = APIRouter(prefix="/instances", dependencies=[Depends(verify_auth)], tags=["Instances"])
 
 @router.get("", response_model=List[ResourceOut])
-def get_instances(db: Session = Depends(get_db)):
+def get_instances(refresh: bool = False, db: Session = Depends(get_db)):
     """
     Auto-discovers instances from AWS, syncs them to SQLite database,
     and returns a merged list of resources containing both AWS live states and DB mappings.
+    If refresh is False, returns cached results from DB instantly.
     """
     try:
-        # 1. Fetch live resource states from AWS across all active accounts
+        import json
         from backend.app.models import AWSAccount
-        accounts = db.query(AWSAccount).filter(AWSAccount.is_active == True).all()
         
-        live_list = []
-        if settings.MOCK_AWS:
-            if accounts:
+        db_count = db.query(Resource).count()
+        if refresh or db_count == 0:
+            # 1. Fetch live resource states from AWS across all active accounts
+            accounts = db.query(AWSAccount).filter(AWSAccount.is_active == True).all()
+            
+            live_list = []
+            if settings.MOCK_AWS:
+                if accounts:
+                    for acc in accounts:
+                        try:
+                            live_list.extend([dict(item, aws_account_id=acc.id) for item in list_resources(account=acc)])
+                        except Exception as e:
+                            print(f"Error scanning resources for account {acc.name}: {e}")
+                else:
+                    try:
+                        live_list.extend([dict(item, aws_account_id=None) for item in list_resources(account=None)])
+                    except Exception as e:
+                        print(f"Error scanning resources for default host: {e}")
+            else:
+                # Scan default host
+                try:
+                    live_list.extend([dict(item, aws_account_id=None) for item in list_resources(account=None)])
+                except Exception as e:
+                    print(f"Error scanning resources for default host: {e}")
+                
+                # Scan registered active accounts
                 for acc in accounts:
                     try:
                         live_list.extend([dict(item, aws_account_id=acc.id) for item in list_resources(account=acc)])
                     except Exception as e:
                         print(f"Error scanning resources for account {acc.name}: {e}")
-            else:
-                try:
-                    live_list.extend([dict(item, aws_account_id=None) for item in list_resources(account=None)])
-                except Exception as e:
-                    print(f"Error scanning resources for default host: {e}")
-        else:
-            # Scan default host
-            try:
-                live_list.extend([dict(item, aws_account_id=None) for item in list_resources(account=None)])
-            except Exception as e:
-                print(f"Error scanning resources for default host: {e}")
             
-            # Scan registered active accounts
-            for acc in accounts:
-                try:
-                    live_list.extend([dict(item, aws_account_id=acc.id) for item in list_resources(account=acc)])
-                except Exception as e:
-                    print(f"Error scanning resources for account {acc.name}: {e}")
-                
-        live_ids = {item["id"] for item in live_list}
-        
-        # 2. Sync to DB
-        # Add new or update existing
-        for item in live_list:
-            db_res = db.query(Resource).filter(Resource.id == item["id"]).first()
-            if not db_res:
-                db_res = Resource(
-                    id=item["id"],
-                    name=item["name"],
-                    type=item["type"],
-                    region=item["region"],
-                    aws_account_id=item.get("aws_account_id"),
-                    custom_cost_per_hour=None
-                )
-                db.add(db_res)
-            else:
-                db_res.name = item["name"]
-                db_res.type = item["type"]
-                db_res.region = item["region"]
-                db_res.aws_account_id = item.get("aws_account_id")
-        
-        # Do not delete DB resources if they are missing in the live scan (prevent data/schedule loss).
-        db.commit()
+            # 2. Sync to DB
+            for item in live_list:
+                db_res = db.query(Resource).filter(Resource.id == item["id"]).first()
+                tags_str = json.dumps(item.get("tags", {}))
+                if not db_res:
+                    db_res = Resource(
+                        id=item["id"],
+                        name=item["name"],
+                        type=item["type"],
+                        region=item["region"],
+                        aws_account_id=item.get("aws_account_id"),
+                        status=item.get("status", "unknown"),
+                        instance_type=item.get("instance_type", "unknown"),
+                        tags_json=tags_str,
+                        cost_per_hour=item.get("cost_per_hour", 0.05),
+                        custom_cost_per_hour=None
+                    )
+                    db.add(db_res)
+                else:
+                    db_res.name = item["name"]
+                    db_res.type = item["type"]
+                    db_res.region = item["region"]
+                    db_res.aws_account_id = item.get("aws_account_id")
+                    db_res.status = item.get("status", "unknown")
+                    db_res.instance_type = item.get("instance_type", "unknown")
+                    db_res.tags_json = tags_str
+                    db_res.cost_per_hour = item.get("cost_per_hour", 0.05)
+            
+            # Do not delete DB resources if they are missing in the live scan (prevent data/schedule loss).
+            db.commit()
         
         # 3. Retrieve all resources from DB with eager loaded relationships
         db_resources = db.query(Resource).all()
-        
-        # 4. Map AWS live details to DB resources
-        live_map = {item["id"]: item for item in live_list}
         results = []
         
         for res in db_resources:
-            aws_info = live_map.get(res.id)
-            
             # Serialize model
             res_schema = ResourceOut.model_validate(res)
             
-            if aws_info:
-                # Inject live AWS states
-                res_schema.status = aws_info["status"]
-                res_schema.instance_type = aws_info["instance_type"]
-                res_schema.tags = aws_info["tags"]
-                # Cost per hour can be customized in DB, else use default AWS type mapping
-                res_schema.cost_per_hour = res.custom_cost_per_hour if res.custom_cost_per_hour is not None else aws_info["cost_per_hour"]
-            else:
-                # Offline / terminated / missing credentials
-                res_schema.status = "offline"
-                res_schema.instance_type = "unknown"
+            # Use cached state from DB
+            res_schema.status = res.status
+            res_schema.instance_type = res.instance_type
+            try:
+                res_schema.tags = json.loads(res.tags_json)
+            except Exception:
                 res_schema.tags = {}
-                res_schema.cost_per_hour = res.custom_cost_per_hour if res.custom_cost_per_hour is not None else 0.05
-                
+            
+            res_schema.cost_per_hour = res.custom_cost_per_hour if res.custom_cost_per_hour is not None else res.cost_per_hour
+            
             results.append(res_schema)
             
         return results

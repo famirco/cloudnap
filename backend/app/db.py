@@ -42,7 +42,7 @@ def init_db():
     # 0. Migrate resources
     if "resources" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("resources")]
-        if "expiry_date" not in columns or "total_dollars_saved" not in columns or "aws_account_id" not in columns:
+        if "expiry_date" not in columns or "total_dollars_saved" not in columns or "aws_account_id" not in columns or "status" not in columns or "tags_json" not in columns:
             try:
                 from backend.app.models import Resource, ResourceSchedule, ResourceOverride
                 ResourceOverride.__table__.drop(bind=engine, checkfirst=True)

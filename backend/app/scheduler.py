@@ -54,14 +54,28 @@ def check_resources_job():
         current_weekday = now.isoweekday() # 1=Monday, 7=Sunday
         current_time_str = now.strftime("%H:%M") # "HH:MM"
         
+        import json
+        live_items_map = {r["id"]: r for r in live_resources}
+        
         for resource in db_resources:
             resource_id = resource.id
             
-            # Check if this resource exists in the active scan list
+            # Check if this resource exists in the active AWS scan list
             if resource_id not in live_status_map:
+                if resource.status != "offline":
+                    resource.status = "offline"
+                    db.add(resource)
                 logger.warning(f"Resource {resource_id} not found in active AWS scan.")
                 continue
                 
+            # Update DB cache with latest live status, type, cost, tags
+            live_item = live_items_map[resource_id]
+            resource.status = live_item.get("status", "unknown")
+            resource.instance_type = live_item.get("instance_type", "unknown")
+            resource.tags_json = json.dumps(live_item.get("tags", {}))
+            resource.cost_per_hour = live_item.get("cost_per_hour", 0.05)
+            db.add(resource)
+            
             current_status = live_status_map[resource_id]
             
             # If the resource has no sleep schedules, no manual overrides, and no lease expiry, skip managing it
