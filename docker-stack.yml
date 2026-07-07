@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  cloudnap:
+    # Docker Swarm does not support "build" keys; it requires a pre-built image.
+    # You can build and push it to your registry (e.g. ECR, Docker Hub) first.
+    image: cloudnap:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - MOCK_AWS=true
+      - AWS_DEFAULT_REGION=us-east-1
+      - ALLOWED_REGIONS=us-east-1,us-west-2
+      - APP_PASSWORD=secret123
+      - DATABASE_URL=sqlite:////app/data/cloudnap.db
+    volumes:
+      - cloudnap-data:/app/data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      placement:
+        constraints:
+          - node.role == manager
+
+volumes:
+  cloudnap-data:
