@@ -127,12 +127,28 @@ The easiest way to run CloudNap locally or in production is using Docker Compose
    *Note: Set `MOCK_AWS=false` and configure standard AWS environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`) to connect to actual AWS resources.*
 
 3. **Launch the stack**:
+
+   Using **Docker Compose**:
    ```bash
    docker compose up --build -d
    ```
 
+   Using **Docker Swarm** (`docker stack deploy`):
+   ```bash
+   # Build the image first (since Swarm stack deploy doesn't support the 'build' key)
+   docker build -t cloudnap:latest -f backend/Dockerfile .
+   
+   # Deploy the stack
+   docker stack deploy -c docker-stack.yml cloudnap
+   ```
+
 4. **Access the web panel**:
-   Open [http://localhost:8000](http://localhost:8000) and authenticate using your password (`secret123`).
+   Open [http://localhost:8080](http://localhost:8080) and authenticate using your password (`secret123`).
+
+5. **Health Checks**:
+   If deploying behind an AWS Application Load Balancer (ALB), configure your Target Group health check with:
+   *   **Path**: `/api/auth/status`
+   *   **Port**: `8080` (public JSON status endpoint, returns `200 OK`)
 
 ---
 
