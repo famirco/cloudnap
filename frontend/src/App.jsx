@@ -958,10 +958,32 @@ export default function App() {
           <div className="glass-panel p-6 rounded-2xl space-y-4">
             <h3 className="text-lg font-bold text-brand-teal">Sleep Schedules</h3>
             
-            {sortedSchedules.length === 0 ? (
+            {sortedSchedules.length === 0 && !inst.expiry_date ? (
               <p className="text-brand-slate text-sm italic py-4">Running 24/7 (No sleep schedules registered)</p>
             ) : (
               <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {inst.expiry_date && (
+                  <div className="p-4 rounded-xl border border-amber-300/30 bg-amber-500/5 flex flex-col justify-between shadow-sm relative">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 select-none">
+                        Lease Expiry (TTL)
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        new Date() > new Date(inst.expiry_date + "Z") 
+                          ? "bg-rose-100 text-rose-800 border border-rose-200" 
+                          : "bg-amber-100 text-amber-800 border border-amber-300 animate-pulse"
+                      }`}>
+                        {new Date() > new Date(inst.expiry_date + "Z") ? "Expired" : "Active"}
+                      </span>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-800">
+                      Temporary Lease Schedule
+                    </p>
+                    <p className="text-xs text-brand-slate mt-1">
+                      ⏰ Expires: {new Date(inst.expiry_date + "Z").toISOString().replace("T", " ").substring(0, 16)} UTC
+                    </p>
+                  </div>
+                )}
                 {sortedSchedules.map(win => {
                   const parseUTC = (str) => {
                     if (!str) return new Date();
@@ -1754,10 +1776,16 @@ export default function App() {
                           {/* Bottom section: brief metadata summary */}
                           <div className="mt-4 pt-4 border-t border-brand-soft/20 flex items-center justify-between text-xs text-brand-slate">
                             <span>Schedules status:</span>
-                            <span className={`font-semibold ${activeSchedulesCount > 0 ? "text-brand-teal" : "text-slate-500"}`}>
-                              {activeSchedulesCount > 0 
-                                ? `${activeSchedulesCount} Sleep Window${activeSchedulesCount > 1 ? "s" : ""}` 
-                                : "Running 24/7"}
+                            <span className={`font-semibold ${
+                              inst.expiry_date 
+                                ? (new Date() > new Date(inst.expiry_date + "Z") ? "text-rose-500 font-bold" : "text-amber-500")
+                                : (activeSchedulesCount > 0 ? "text-brand-teal" : "text-slate-500")
+                            }`}>
+                              {inst.expiry_date 
+                                ? (new Date() > new Date(inst.expiry_date + "Z") ? "Lease Expired" : "Lease Active (TTL)")
+                                : (activeSchedulesCount > 0 
+                                    ? `${activeSchedulesCount} Sleep Window${activeSchedulesCount > 1 ? "s" : ""}` 
+                                    : "Running 24/7")}
                             </span>
                           </div>
                         </div>
