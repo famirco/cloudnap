@@ -14,7 +14,7 @@ def get_aws_session(account: Any = None) -> boto3.Session:
 
     if account.role_arn:
         # Cross-Account AssumeRole using STS
-        sts_client = boto3.client("sts")
+        sts_client = boto3.client("sts", region_name=settings.AWS_DEFAULT_REGION or "us-east-1")
         assume_role_kwargs = {
             "RoleArn": account.role_arn,
             "RoleSessionName": "CloudNapSession",

@@ -507,7 +507,7 @@ def test_account_connection(id: int, db: Session = Depends(get_db)):
         
     try:
         session = get_aws_session(acc)
-        sts = session.client("sts")
+        sts = session.client("sts", region_name=settings.AWS_DEFAULT_REGION or "us-east-1")
         sts.get_caller_identity()
         return {"status": "success", "message": "Connection test passed"}
     except Exception as e:
