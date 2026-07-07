@@ -1,6 +1,32 @@
 # CloudNap
 
+[![GitHub License](https://img.shields.io/github/license/famirco/cloudnap?color=0c586c)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/famirco/cloudnap?color=0c586c)](https://github.com/famirco/cloudnap/stargazers)
+[![Docker Build](https://img.shields.io/badge/docker-ready-blue?logo=docker&color=0c586c)](docker-compose.yml)
+[![GreenOps](https://img.shields.io/badge/GreenOps-Optimized-green)](https://github.com/famirco/cloudnap)
+
 An open-source, self-hosted AWS Instance Scheduler designed to run inside a single Docker container using Docker Compose. CloudNap helps you automatically schedule the shutdown and startup of AWS resources (EC2 and RDS) to optimize operations and cloud resource runtime.
+
+---
+
+## 🤔 Why CloudNap?
+
+Managing AWS EC2 and RDS instances on a budget shouldn't require complex architectures or expensive third-party subscriptions. Here is how CloudNap compares to common AWS Cost Optimization practices:
+
+| Feature | **CloudNap** 😴 | **AWS Instance Scheduler** | **SaaS Platforms** | **Manual Scripts** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Deployment** | Single Docker Container | Heavy CloudFormation / Lambda | Third-party Connection | Cron on server / Local |
+| **Pricing** | Free & Open Source | Pay-per-use (DynamoDB/Lambda) | Monthly Subscription | Free |
+| **Live Cost Tracking** | Yes (AWS Pricing API) | No | Yes | No |
+| **UI Dashboard** | Yes (Premium Dark/Light) | No | Yes | No |
+| **TTL Lease Expiry** | Yes | No | Yes (Premium plans) | No |
+| **GreenOps Impact** | Built-in tracking | No | Yes | No |
+
+### 🎯 Key Use Cases
+* **Development & QA Sandboxes**: Instantly shut down non-production servers overnight and on weekends to avoid idle bill runups.
+* **Startups & SMBs**: Implement cloud cost-saving policies in 10 minutes without security approvals or platform subscription fees.
+* **Temporary Lease Allocations**: Allocate cloud resources to contractors or sprints with a hard lease expiry time (TTL) to automatically prevent orphaned servers.
+* **GreenOps & Carbon reduction**: Quantify active server sleeping hours to track resource footprint reduction.
 
 ---
 
@@ -32,6 +58,21 @@ An open-source, self-hosted AWS Instance Scheduler designed to run inside a sing
 *   **Database**: SQLite (SQLAlchemy) for persistent resource mappings, sleep schedules, action logs, and manual overrides.
 *   **Frontend**: React (Vite) + Tailwind CSS + High-Contrast Light Theme, served statically by FastAPI.
 *   **Containerization**: Docker & Docker Compose.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    User([Platform User]) <-->|React UI| FE[Vite Frontend]
+    FE <-->|REST API / Bearer Auth| BE[FastAPI Backend]
+    BE <-->|Read/Write Config & Schedules| DB[(SQLite Database)]
+    BE <-->|APScheduler Ticks (Every 1m)| SE[Self-Healing Engine]
+    SE <-->|Boto3 / pricing Client| AWS[AWS API - EC2 & RDS]
+    SE -.->|Alerts| Slack[Slack Webhook]
+    SE -.->|Alerts| Telegram[Telegram Bot API]
+```
 
 ---
 
